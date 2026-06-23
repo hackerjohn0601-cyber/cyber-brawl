@@ -541,65 +541,35 @@ export class LobbyEngine3D {
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Calculate which side of the player the camera sees
-    const camX = this.camera.position.x;
-    const camZ = this.camera.position.z;
-    const pX = player.x;
-    const pZ = player.z || 0;
-    
-    // Angle from player to camera
-    const angleToCamera = Math.atan2(camX - pX, camZ - pZ);
-    
-    // Player's facing direction as angle (facing 1 = right = PI/2, facing -1 = left = -PI/2)
-    const playerAngle = player.facing === 1 ? Math.PI / 2 : -Math.PI / 2;
-    
-    // Relative angle: how much the camera is rotated relative to the player's front
-    let relAngle = angleToCamera - playerAngle;
-    // Normalize to -PI to PI
-    while (relAngle > Math.PI) relAngle -= Math.PI * 2;
-    while (relAngle < -Math.PI) relAngle += Math.PI * 2;
-    
-    // Determine view direction:
-    // -PI/4 to PI/4 = front
-    // PI/4 to 3PI/4 = right side (show facing away from camera)
-    // -PI/4 to -3PI/4 = left side
-    // |relAngle| > 3PI/4 = back
-    const isBackView = Math.abs(relAngle) > Math.PI * 3 / 4;
-    
-    // Temporarily adjust facing based on camera position for side views
+    // Adjust facing based on camera position so you see the correct side
     const oldFacing = player.facing;
-    if (!isBackView) {
-      // Camera is in front-ish: show the side facing toward camera
-      if (camX > pX) {
-        player.facing = -1; // Player faces left so camera sees their front from the right
-      } else {
-        player.facing = 1;
-      }
+    const camX = this.camera.position.x;
+    const pX = player.x;
+    
+    // If camera is to the right of the player, player faces left (toward camera)
+    // If camera is to the left, player faces right (toward camera)
+    if (camX > pX) {
+      player.facing = -1;
+    } else {
+      player.facing = 1;
     }
     
-    // Temporarily adjust player's coordinate to draw nicely on this 150x200 canvas
+    // Temporarily adjust player's coordinate to draw on 150x200 canvas
     const oldX = player.x;
     const oldY = player.y;
     
-    // Center character horizontally
     player.x = (canvas.width - player.width) / 2;
-    // Align to bottom
     player.y = canvas.height - player.height;
     
-    if (isBackView) {
-      // Draw a simplified BACK VIEW silhouette
-      this.drawPlayerBackView(ctx, player, canvas);
-    } else {
-      // Draw using Player's native 2D draw function (front/side view)
-      try {
-        player.draw(ctx);
-      } catch(e) {
-        ctx.fillStyle = player.color || '#ff4757';
-        ctx.fillRect(player.x + 10, player.y, player.width - 20, player.height);
-        ctx.beginPath();
-        ctx.arc(player.x + player.width / 2, player.y - 2, 12, 0, Math.PI * 2);
-        ctx.fill();
-      }
+    // Always use Player's native 2D draw - the stickman looks great from all angles!
+    try {
+      player.draw(ctx);
+    } catch(e) {
+      ctx.fillStyle = player.color || '#ff4757';
+      ctx.fillRect(player.x + 10, player.y, player.width - 20, player.height);
+      ctx.beginPath();
+      ctx.arc(player.x + player.width / 2, player.y - 2, 12, 0, Math.PI * 2);
+      ctx.fill();
     }
     
     // Also draw username above head
@@ -634,45 +604,6 @@ export class LobbyEngine3D {
     sprite.position.set(player.x, spriteY, player.z || 0);
   }
 
-  drawPlayerBackView(ctx, player, canvas) {
-    const cx = player.x + player.width / 2;
-    const py = player.y;
-    const color = player.color || '#ff4757';
-    
-    // Head (back of head - solid circle, no face)
-    ctx.fillStyle = '#f5c6a0'; // Skin color
-    ctx.beginPath();
-    ctx.arc(cx, py - 2, 14, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Hair on back of head
-    ctx.fillStyle = '#2f3542';
-    ctx.beginPath();
-    ctx.arc(cx, py - 4, 14, Math.PI * 1.2, Math.PI * 2.8);
-    ctx.fill();
-    
-    // Body (back)
-    ctx.fillStyle = color;
-    ctx.fillRect(cx - 18, py + 12, 36, player.height - 30);
-    
-    // Back detail line (spine area)
-    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(cx, py + 15);
-    ctx.lineTo(cx, py + player.height - 25);
-    ctx.stroke();
-    
-    // Arms (hanging at sides, seen from back)
-    ctx.fillStyle = color;
-    ctx.fillRect(cx - 24, py + 14, 8, 30);
-    ctx.fillRect(cx + 16, py + 14, 8, 30);
-    
-    // Legs
-    ctx.fillStyle = '#2f3542';
-    ctx.fillRect(cx - 12, py + player.height - 18, 10, 18);
-    ctx.fillRect(cx + 2, py + player.height - 18, 10, 18);
-  }
 
   start() {
     console.log('[LobbyEngine3D] start() called. Scene children:', this.scene.children.length);
