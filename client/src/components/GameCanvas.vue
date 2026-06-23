@@ -740,7 +740,7 @@
       <canvas ref="gameCanvas" width="1024" height="576"></canvas>
 
       <!-- UI Overlay for Health Bars -->
-      <div class="ui-layer" v-show="!isCinematicActive">
+      <div class="ui-layer" v-show="!isCinematicActive && gameState === 'FIGHT'">
         <div class="health-wrapper p1-health">
           <div class="char-name" style="color: #ff4757">{{ p1Choice }}</div>
           <div class="health-bar-bg">

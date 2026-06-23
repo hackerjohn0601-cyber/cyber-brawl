@@ -66,6 +66,16 @@ export class BossEngine {
     this.cinematicActive = false;
     this.timeStopOwner = null;
     this.timeScale = 1.0;
+    
+    // Zoom/Camera
+    this.zoomActive = false;
+    this.zoomScale = 1;
+    this.zoomTargetScale = 1;
+    this.zoomX = 0;
+    this.zoomY = 0;
+    this.zoomTargetX = 0;
+    this.zoomTargetY = 0;
+    this.zoomSpeed = 5;
   }
 
   init(player1, player2, isNPC) {
@@ -107,7 +117,17 @@ export class BossEngine {
     this.isRoundStarting = true;
     this.isGameOver = false;
     
-    // Countdown
+    // Countdown and Cinematic
+    this.cinematicActive = true;
+    this.zoomActive = true;
+    // Focus on boss face
+    this.zoomTargetX = this.boss.x + this.boss.width / 2;
+    this.zoomTargetY = this.boss.y + 100; // Boss head area
+    this.zoomTargetScale = 1.8;
+    this.zoomScale = 1.0;
+    this.zoomX = this.canvas.width / 2;
+    this.zoomY = this.canvas.height / 2;
+    
     this.phaseAnnouncement = 'BOSS RAID';
     this.phaseAnnouncementTimer = 2.0;
     
@@ -115,6 +135,10 @@ export class BossEngine {
       this.phaseAnnouncement = '3';
       this.phaseAnnouncementTimer = 1.0;
       audioManager.playCountdown();
+      // Zoom back out
+      this.zoomTargetScale = 1.0;
+      this.zoomTargetX = this.canvas.width / 2;
+      this.zoomTargetY = this.canvas.height / 2;
     }, 2000);
     setTimeout(() => {
       this.phaseAnnouncement = '2';
@@ -131,6 +155,8 @@ export class BossEngine {
       this.phaseAnnouncementTimer = 1.0;
       audioManager.playFight();
       this.isRoundStarting = false;
+      this.cinematicActive = false;
+      this.zoomActive = false;
     }, 5000);
     
     requestAnimationFrame((t) => this.loop(t));
@@ -175,6 +201,27 @@ export class BossEngine {
     if (this.shakeTimer > 0) {
       this.shakeTimer -= dt;
       if (this.shakeTimer <= 0) this.shakeMagnitude = 0;
+    }
+
+    // Zoom update
+    if (this.zoomActive || this.zoomScale !== 1.0) {
+      this.zoomScale += (this.zoomTargetScale - this.zoomScale) * this.zoomSpeed * dt;
+      this.zoomX += (this.zoomTargetX - this.zoomX) * this.zoomSpeed * dt;
+      this.zoomY += (this.zoomTargetY - this.zoomY) * this.zoomSpeed * dt;
+    }
+    
+    // Update entities (projectiles, etc.)
+    for (let i = this.entities.length - 1; i >= 0; i--) {
+      const e = this.entities[i];
+      if (e.isDead || (e.isActive === false)) {
+        if (!this.players.includes(e)) {
+          this.entities.splice(i, 1);
+        }
+        continue;
+      }
+      if (!this.players.includes(e)) {
+        if (e.update) e.update(dt);
+      }
     }
     
     if (this.isVictory || this.isDefeat || this.isRoundStarting) {
@@ -587,10 +634,36 @@ export class BossEngine {
 
   // Stub methods that Player.js might call
   applyDamage() {}
+  
+  addEntity(entity) {
+    this.entities.push(entity);
+  }
+  
+  triggerZoom(target, duration, scale) {
+    this.zoomActive = true;
+    this.zoomTargetScale = scale;
+    this.zoomTargetX = target.x + target.width / 2;
+    this.zoomTargetY = target.y + target.height / 2;
+    setTimeout(() => {
+      if (!this.cinematicActive) {
+        this.zoomTargetScale = 1.0;
+        this.zoomTargetX = this.canvas.width / 2;
+        this.zoomTargetY = this.canvas.height / 2;
+        setTimeout(() => { this.zoomActive = false; }, 500);
+      }
+    }, duration * 1000);
+  }
 
   draw() {
     const ctx = this.ctx;
     ctx.save();
+    
+    // Camera Zoom
+    if (this.zoomScale !== 1.0) {
+      ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+      ctx.scale(this.zoomScale, this.zoomScale);
+      ctx.translate(-this.zoomX, -this.zoomY);
+    }
     
     // Screen shake
     if (this.shakeTimer > 0) {
@@ -672,6 +745,13 @@ export class BossEngine {
       ctx.restore();
     }
     
+    // === DRAW ENTITIES (PROJECTILES) ===
+    for (const e of this.entities) {
+      if (!this.players.includes(e) && e.draw) {
+        e.draw(ctx);
+      }
+    }
+    
     // === Phase 3 Darkness ===
     if (this.boss.darknessLevel > 0) {
       const grad = ctx.createRadialGradient(
@@ -684,35 +764,10 @@ export class BossEngine {
       ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
     
-    // === UI ===
-    this.drawUI(ctx);
-    
-    // === PHASE ANNOUNCEMENT ===
-    if (this.phaseAnnouncementTimer > 0) {
-      const alpha = Math.min(1, this.phaseAnnouncementTimer);
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.font = 'italic 900 60px "Arial Black", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = this.isVictory ? '#ffd32a' : '#fff';
-      ctx.shadowBlur = 20;
-      ctx.shadowColor = this.isVictory ? '#ffd32a' : '#9b59b6';
-      ctx.fillText(this.phaseAnnouncement, this.canvas.width / 2, this.canvas.height / 2);
-      ctx.restore();
-    }
-    
-    // Victory confetti
-    for (const p of this.victoryParticles) {
-      ctx.save();
-      ctx.globalAlpha = Math.min(1, p.life / 0.5);
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rotation);
-      ctx.fillStyle = p.color;
-      ctx.fillRect(-p.size/2, -p.size/4, p.size, p.size/2);
-      ctx.restore();
-    }
-    
     ctx.restore();
+    
+    // UI draws OUTSIDE of camera zoom
+    this.drawUI(ctx);
   }
 
   drawUI(ctx) {
@@ -813,5 +868,30 @@ export class BossEngine {
     ctx.font = '12px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(`${Math.floor(this.gameTimer / 60)}:${String(Math.floor(this.gameTimer % 60)).padStart(2, '0')}`, this.canvas.width / 2, barY + barH + 20);
+
+    // Phase Announcement (Moved here to be outside camera transform)
+    if (this.phaseAnnouncementTimer > 0) {
+      const alpha = Math.min(1, this.phaseAnnouncementTimer);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.font = 'italic 900 60px "Arial Black", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = this.isVictory ? '#ffd32a' : '#fff';
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = this.isVictory ? '#ffd32a' : '#9b59b6';
+      ctx.fillText(this.phaseAnnouncement, this.canvas.width / 2, this.canvas.height / 2);
+      ctx.restore();
+    }
+    
+    // Victory confetti (Moved here)
+    for (const p of this.victoryParticles) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, p.life / 0.5);
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size/2, -p.size/4, p.size, p.size/2);
+      ctx.restore();
+    }
   }
 }
