@@ -413,13 +413,17 @@ export class BossEngine {
         }
       }
       
-      // Check player fireballs vs boss
-      if (player.fireball && player.fireball.isActive) {
+    }
+    
+    // Check all projectiles (fireballs) in entities vs boss
+    for (let i = this.entities.length - 1; i >= 0; i--) {
+      const e = this.entities[i];
+      if (e.type === 'fireball' && e.isActive && e.owner && e.owner.team === 1) {
         const fbBox = {
-          x: player.fireball.x - 10,
-          y: player.fireball.y - 10,
-          width: 20,
-          height: 20
+          x: e.x,
+          y: e.y,
+          width: e.width || 20,
+          height: e.height || 20
         };
         const bossBox = {
           x: this.boss.x + 20,
@@ -428,9 +432,9 @@ export class BossEngine {
           height: this.boss.height - 40
         };
         if (this.checkCollision(fbBox, bossBox)) {
-          this.boss.takeDamage(20);
-          player.fireball.isActive = false;
-          audioManager.playHit();
+          this.boss.takeDamage(e.damage || 15);
+          e.isActive = false;
+          import('./AudioManager.js').then(({ audioManager }) => { if(audioManager.playHit) audioManager.playHit() });
         }
       }
     }

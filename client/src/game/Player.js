@@ -2139,7 +2139,13 @@ export class Player {
 
     // Auto-Aim: Always face the opponent
     if (this.engine && !this.isStunned) {
-      const opponent = this.engine.entities.find(e => this.isEnemy(e));
+      let opponent = this.engine.entities.find(e => this.isEnemy(e));
+      
+      // If we are in Boss Raid, boss is the target!
+      if (!opponent && this.engine.boss && this.isEnemy(this.engine.boss)) {
+        opponent = this.engine.boss;
+      }
+      
       if (opponent) {
         this.facing = opponent.x > this.x ? 1 : -1;
       }
@@ -2344,6 +2350,10 @@ export class Player {
         if (skinId === 'archmage') return '#fbc531';
         if (skinId === 'darkmage') return '#273c75';
         return '#00b894'; // Greenish cloak base
+      case 'Gunslinger':
+        if (skinId === 'renegade') return '#c23616';
+        if (skinId === 'outlaw') return '#2f3640';
+        return '#e84118'; // Orange/Red base
       default:
         return this.color;
     }
@@ -2356,6 +2366,7 @@ export class Player {
       case 'Tank': return '/sprites/char_0_3.png';
       case 'Ninja': return '/sprites/char_0_4.png';
       case 'Sniper': return '/sprites/char_0_1.png';
+      case 'Gunslinger': return '/sprites/char_1_0.png'; // Added Gunslinger sprite
       case 'Mage': return '/sprites/char_0_6.png';
       case 'Brawler': return '/sprites/char_1_4.png';
       default: return '/sprites/char_0_0.png';
