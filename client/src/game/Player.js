@@ -2131,37 +2131,6 @@ export class Player {
           if (audioManager.playDefend) audioManager.playDefend();
         });
       }
-       if (import.meta.env.DEV && !this.engine) {
-      // 3D LOBBY MOVEMENT (dev mode only)
-      const moveSpeed = this.speed * deltaTime;
-      if (this.keys[this.controls.left]) this.velocity.x = -moveSpeed;
-      else if (this.keys[this.controls.right]) this.velocity.x = moveSpeed;
-      else this.velocity.x = 0;
-
-      if (this.keys[this.controls.up]) this.z -= moveSpeed * 0.8;
-      else if (this.keys[this.controls.down]) this.z += moveSpeed * 0.8;
-
-      this.x += this.velocity.x;
-      
-      // Simple bound limits for 3D lobby
-      if (this.z < -400) this.z = -400; // Back wall
-      if (this.z > 200) this.z = 200;   // Front wall
-
-      if (this.velocity.x !== 0 || this.keys[this.controls.up] || this.keys[this.controls.down]) {
-        this.isWalkHopping = true;
-        this.y = floorY - this.height - Math.abs(Math.sin(Date.now() / 100) * 10);
-        if (this.velocity.x > 0) this.facing = 1;
-        else if (this.velocity.x < 0) this.facing = -1;
-      } else {
-        this.isWalkHopping = false;
-        this.y = floorY - this.height;
-      }
-      
-      if (this.x < 0) this.x = 0;
-      if (this.x > mapWidth - this.width) this.x = mapWidth - this.width;
-      
-      return;
-    }
     }
   }
 

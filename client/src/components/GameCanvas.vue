@@ -960,7 +960,6 @@ import { Player } from '../game/Player';
 import { audioManager } from '../game/AudioManager.js';
 import { networkManager } from '../game/NetworkManager.js';
 import { LobbyEngine } from '../game/LobbyEngine.js';
-import { LobbyEngine3D } from '../game/LobbyEngine3D.js';
 import { SKINS_DB } from '../game/SkinsDB';
 
 // 'LOBBY', 'TUTORIAL', 'MULTIPLAYER_LOBBY', 'CHAR_SELECT', 'FIGHT'
@@ -1896,9 +1895,7 @@ const initLobby = () => {
     lobbyEngine = null;
   }
   
-  lobbyEngine = import.meta.env.DEV 
-    ? new LobbyEngine3D(lobbyCanvas.value) 
-    : new LobbyEngine(lobbyCanvas.value);
+  lobbyEngine = new LobbyEngine(lobbyCanvas.value);
   if (leaderboardData.value && leaderboardData.value.length > 0) {
     lobbyEngine.setLeaderboardData(leaderboardData.value);
   }
