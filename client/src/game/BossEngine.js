@@ -112,6 +112,9 @@ export class BossEngine {
     this.players.push(player2);
     
     this.entities = [...this.players];
+    this.floatingTexts = [];
+    this.comboCounter = 0;
+    this.comboTimer = 0;
   }
 
   start() {
@@ -211,6 +214,19 @@ export class BossEngine {
       this.zoomScale += (this.zoomTargetScale - this.zoomScale) * this.zoomSpeed * dt;
       this.zoomX += (this.zoomTargetX - this.zoomX) * this.zoomSpeed * dt;
       this.zoomY += (this.zoomTargetY - this.zoomY) * this.zoomSpeed * dt;
+    }
+    
+    // Combo & Texts
+    if (this.comboTimer > 0) {
+      this.comboTimer -= dt;
+      if (this.comboTimer <= 0) this.comboCounter = 0;
+    }
+    for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+      const ft = this.floatingTexts[i];
+      ft.x += ft.vx * dt;
+      ft.y += ft.vy * dt;
+      ft.life -= dt;
+      if (ft.life <= 0) this.floatingTexts.splice(i, 1);
     }
     
     // Update entities (projectiles, etc.)
@@ -406,6 +422,8 @@ export class BossEngine {
             }
             
             this.boss.takeDamage(damage);
+            this.addFloatingText(damage, this.boss.x + this.boss.width/2, this.boss.y + this.boss.height/2, '#f1c40f', player.isUsingSkill);
+            
             this.hitStopTimer = 0.05;
             this.triggerScreenShake(0.1, 3);
             audioManager.playHit();
@@ -432,7 +450,9 @@ export class BossEngine {
           height: this.boss.height - 40
         };
         if (this.checkCollision(fbBox, bossBox)) {
-          this.boss.takeDamage(e.damage || 15);
+          const dmg = e.damage || 15;
+          this.boss.takeDamage(dmg);
+          this.addFloatingText(dmg, this.boss.x + this.boss.width/2, this.boss.y + this.boss.height/2, '#e74c3c');
           e.isActive = false;
           import('./AudioManager.js').then(({ audioManager }) => { if(audioManager.playHit) audioManager.playHit() });
         }
@@ -562,7 +582,8 @@ export class BossEngine {
     }
     
     player.health -= damage;
-    audioManager.playHit();
+    this.addFloatingText(damage, player.x + player.width/2, player.y, player.isDefending ? '#95a5a6' : '#ff4757');
+    import('./AudioManager.js').then(({ audioManager }) => { if(audioManager.playHit) audioManager.playHit() });
     
     if (player.health <= 0) {
       player.health = 0;
@@ -637,6 +658,21 @@ export class BossEngine {
   checkCollision(a, b) {
     return a.x < b.x + b.width && a.x + a.width > b.x &&
            a.y < b.y + b.height && a.y + a.height > b.y;
+  }
+
+  addFloatingText(text, x, y, color = '#fff', isCrit = false) {
+    this.floatingTexts.push({
+      text: text,
+      x: x + (Math.random() * 40 - 20),
+      y: y + (Math.random() * 40 - 20),
+      vx: (Math.random() - 0.5) * 100,
+      vy: -150 - Math.random() * 50,
+      life: 1.0,
+      color: color,
+      isCrit: isCrit
+    });
+    this.comboCounter++;
+    this.comboTimer = 2.0;
   }
 
   // Stub methods that Player.js might call
@@ -775,6 +811,39 @@ export class BossEngine {
     
     // UI draws OUTSIDE of camera zoom
     this.drawUI(ctx);
+    
+    // Floating damage texts
+    for (const ft of this.floatingTexts) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, ft.life);
+      ctx.fillStyle = ft.color || '#fff';
+      ctx.font = 'bold 24px Arial';
+      ctx.textAlign = 'center';
+      if (ft.isCrit) ctx.font = 'bold 36px Arial';
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = '#000';
+      ctx.fillText(ft.text, ft.x, ft.y);
+      ctx.restore();
+    }
+    
+    // Combo Counter
+    if (this.comboCounter > 1) {
+      ctx.save();
+      ctx.fillStyle = '#f1c40f';
+      ctx.font = 'italic bold 48px Arial';
+      ctx.textAlign = 'left';
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = '#e67e22';
+      ctx.fillText(this.comboCounter + ' HITS!', 50, 150);
+      
+      // Combo text label
+      ctx.fillStyle = '#fff';
+      ctx.font = 'italic bold 24px Arial';
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = '#000';
+      ctx.fillText('COMBO', 55, 110);
+      ctx.restore();
+    }
   }
 
   drawUI(ctx) {
