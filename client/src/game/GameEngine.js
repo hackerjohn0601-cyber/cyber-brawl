@@ -247,12 +247,12 @@ export class GameEngine {
       const progress = Math.min(1, this.killCamTimer / 0.3);
       const gradient = ctx.createRadialGradient(
         this.canvas.width / 2, this.canvas.height / 2, this.canvas.width * 0.25,
-        this.canvas.width / 2, this.canvas.height / 2, this.canvas.width * 0.7
+        this.canvas.width / 2, this.canvas.height / 2, this.canvas.width * 1.5
       );
       gradient.addColorStop(0, 'rgba(0,0,0,0)');
       gradient.addColorStop(1, `rgba(0,0,0,${0.6 * progress})`);
       ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      ctx.fillRect(-this.canvas.width * 2, -this.canvas.height * 2, this.canvas.width * 5, this.canvas.height * 5);
       
       // "K.O." text
       if (this.killCamTimer > 0.5) {
@@ -1325,17 +1325,17 @@ export class GameEngine {
     }
 
     this.ctx.fillStyle = '#1e1e2f';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.fillRect(-this.canvas.width * 2, -this.canvas.height * 2, this.canvas.width * 5, this.canvas.height * 5);
 
     // Draw Background Decorations (Bell's Equipment Shop)
     this.drawBackgroundShop();
 
     this.ctx.fillStyle = '#2c2c40';
-    this.ctx.fillRect(0, this.canvas.height - 50, this.canvas.width, 50);
+    this.ctx.fillRect(-this.canvas.width * 2, this.canvas.height - 50, this.canvas.width * 5, 500);
 
     if (this.timeStopOwner) {
       this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      this.ctx.fillRect(-this.canvas.width * 2, -this.canvas.height * 2, this.canvas.width * 5, this.canvas.height * 5);
     }
 
     for (const entity of this.entities) {
