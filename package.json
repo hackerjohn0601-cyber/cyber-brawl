@@ -1,0 +1,9 @@
+{
+  "devDependencies": {
+    "jimp": "^1.6.1"
+  },
+  "dependencies": {
+    "canvas": "^3.2.3",
+    "puppeteer": "^25.1.0"
+  }
+}

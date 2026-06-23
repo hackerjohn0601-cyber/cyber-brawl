@@ -1,0 +1,13 @@
+@@ -581,6 +581,12 @@
+ const authError = ref('');
+ const loggedInUsername = ref('');
+ 
++// Global Chat
++const chatMessages = ref([]);
++const chatInput = ref('');
++const isChatFocused = ref(false);
++const chatContainerRef = ref(null);
++const chatInputRef = ref(null);
++
+ // Lobby State
+ const showAdminDashboard = ref(false);

@@ -1,0 +1,292 @@
+{
+  "users": {
+    "john": {
+      "password": "0601",
+      "progress": {
+        "unlockedChars": [
+          "Striker",
+          "Brawler",
+          "Assassin",
+          "Tank",
+          "Ninja",
+          "Sniper",
+          "Mage"
+        ],
+        "charLevels": {
+          "Striker": 5,
+          "Brawler": 5,
+          "Assassin": 5,
+          "Tank": 5,
+          "Ninja": 5,
+          "Sniper": 5,
+          "Mage": 5
+        },
+        "cpuMatches": 0,
+        "tokens": 2162,
+        "goldCoins": 63,
+        "trophies": 3193,
+        "charPlayTime": {
+          "Sniper": 103,
+          "Striker": 61,
+          "Brawler": 39,
+          "Assassin": 39,
+          "Tank": 44,
+          "Ninja": 64,
+          "Mage": 42
+        },
+        "playerEquipment": {
+          "defense": 1,
+          "attack": 0,
+          "maxHp": 0
+        },
+        "quests": {
+          "parries": 0,
+          "cpuDefeated": 309,
+          "ultimatesHit": 0,
+          "skillsUsed": 0,
+          "totalWins": 0,
+          "perfectWins": 0
+        },
+        "unlockedSkins": [
+          "Striker_dark",
+          "Tank_obsidian",
+          "Tank_magma",
+          "Mage_archmage",
+          "Mage_darkmage",
+          "Sniper_specops",
+          "Ninja_blood",
+          "Assassin_shadow",
+          "Brawler_cyber"
+        ],
+        "equippedSkins": {
+          "Striker": "grandmaster",
+          "Tank": "grandmaster",
+          "Mage": "grandmaster",
+          "Sniper": "grandmaster",
+          "Ninja": "grandmaster",
+          "Assassin": "grandmaster",
+          "Brawler": "grandmaster"
+        },
+        "dailyQuests": [
+          {
+            "id": "daily_cpu_5",
+            "desc": "每日: 打贏人機 5 場",
+            "target": 5,
+            "type": "cpuDefeated",
+            "progress": 5,
+            "done": true
+          },
+          {
+            "id": "daily_parry_30",
+            "desc": "每日: 成功格擋 30 次",
+            "target": 30,
+            "type": "parries",
+            "progress": 21,
+            "done": false
+          },
+          {
+            "id": "daily_win_5",
+            "desc": "每日: 對戰獲勝 5 場 (含線上)",
+            "target": 5,
+            "type": "totalWins",
+            "progress": 5,
+            "done": true
+          }
+        ],
+        "lastDailyDate": "Tue Jun 23 2026",
+        "hasUsedDailyRefresh": false
+      }
+    },
+    "man": {
+      "password": "123",
+      "progress": {
+        "unlockedChars": [
+          "Striker"
+        ],
+        "charLevels": {
+          "Striker": 1
+        },
+        "cpuMatches": 1,
+        "tokens": 42,
+        "goldCoins": 1000,
+        "playerEquipment": {
+          "defense": 0,
+          "attack": 0,
+          "maxHp": 0
+        },
+        "quests": {
+          "parries": 0,
+          "cpuDefeated": 3,
+          "ultimatesHit": 0,
+          "skillsUsed": 0,
+          "totalWins": 0,
+          "perfectWins": 0
+        },
+        "dailyQuests": [
+          {
+            "id": "daily_parry_15",
+            "desc": "每日: 成功格擋 15 次",
+            "target": 15,
+            "type": "parries",
+            "progress": 0,
+            "done": false
+          },
+          {
+            "id": "daily_parry_30",
+            "desc": "每日: 成功格擋 30 次",
+            "target": 30,
+            "type": "parries",
+            "progress": 0,
+            "done": false
+          },
+          {
+            "id": "daily_ult_5",
+            "desc": "每日: 累計大招命中 5 次",
+            "target": 5,
+            "type": "ultimatesHit",
+            "progress": 0,
+            "done": false
+          }
+        ],
+        "lastDailyDate": "Sun Jun 21 2026",
+        "hasUsedDailyRefresh": false,
+        "charPlayTime": {
+          "Striker": 6
+        }
+      }
+    },
+    "ken": {
+      "password": "0613",
+      "progress": {
+        "unlockedChars": [
+          "Striker"
+        ],
+        "charLevels": {
+          "Striker": 1
+        },
+        "cpuMatches": 1,
+        "tokens": 10,
+        "goldCoins": 0,
+        "trophies": 0,
+        "charPlayTime": {
+          "Striker": 3
+        },
+        "playerEquipment": {
+          "defense": 0,
+          "attack": 0,
+          "maxHp": 0
+        },
+        "quests": {
+          "parries": 0,
+          "cpuDefeated": 1,
+          "ultimatesHit": 0,
+          "skillsUsed": 0,
+          "totalWins": 0,
+          "perfectWins": 0
+        },
+        "unlockedSkins": [],
+        "equippedSkins": {},
+        "dailyQuests": [
+          {
+            "id": "daily_cpu_3",
+            "desc": "每日: 打贏人機 3 場",
+            "target": 3,
+            "type": "cpuDefeated",
+            "progress": 0,
+            "done": false
+          },
+          {
+            "id": "daily_ult_5",
+            "desc": "每日: 累計大招命中 5 次",
+            "target": 5,
+            "type": "ultimatesHit",
+            "progress": 0,
+            "done": false
+          },
+          {
+            "id": "daily_perfect_1",
+            "desc": "每日: 滿血獲勝 1 次",
+            "target": 1,
+            "type": "perfectWins",
+            "progress": 0,
+            "done": false
+          }
+        ],
+        "lastDailyDate": "Tue Jun 23 2026",
+        "hasUsedDailyRefresh": false
+      }
+    },
+    "jj": {
+      "password": "jj",
+      "progress": {
+        "unlockedChars": [
+          "Striker"
+        ],
+        "charLevels": {
+          "Striker": 1
+        },
+        "cpuMatches": 0,
+        "tokens": 0,
+        "goldCoins": 10000,
+        "playerEquipment": {
+          "defense": 6,
+          "attack": 4,
+          "maxHp": 80
+        },
+        "quests": {
+          "parries": 0,
+          "cpuDefeated": 0,
+          "ultimatesHit": 0,
+          "skillsUsed": 0,
+          "totalWins": 0,
+          "perfectWins": 0
+        },
+        "unlockedSkins": [],
+        "equippedSkins": {},
+        "dailyQuests": [
+          {
+            "id": "daily_parry_30",
+            "desc": "每日: 成功格擋 30 次",
+            "target": 30,
+            "type": "parries",
+            "progress": 0,
+            "done": false
+          },
+          {
+            "id": "daily_cpu_3",
+            "desc": "每日: 打贏人機 3 場",
+            "target": 3,
+            "type": "cpuDefeated",
+            "progress": 0,
+            "done": false
+          },
+          {
+            "id": "daily_ult_5",
+            "desc": "每日: 累計大招命中 5 次",
+            "target": 5,
+            "type": "ultimatesHit",
+            "progress": 0,
+            "done": false
+          }
+        ],
+        "lastDailyDate": "Sun Jun 21 2026",
+        "hasUsedDailyRefresh": false,
+        "charPlayTime": {
+          "Striker": 0
+        }
+      }
+    }
+  },
+  "clans": {
+    "管理員戰隊": {
+      "leader": "john",
+      "members": [
+        "john"
+      ],
+      "trophies": 0,
+      "maxMembers": 10,
+      "description": "知道我是誰嗎",
+      "createdAt": "2026-06-23T00:42:54.161Z"
+    }
+  }
+}

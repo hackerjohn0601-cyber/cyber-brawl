@@ -1,0 +1,12 @@
+@@ -520,6 +520,10 @@
+ const lobbyCanvas = ref(null);
+ let engine = null;
+ let lobbyEngine = null;
+ let lobbyUpdateTimer = null;
++
++// Skin Shop Mannequin
++const mannequinCanvas = ref(null);
++let mannequinAnimationId = null;
++let mannequinPlayer = null;
+ 
+ // Auth State

@@ -1,0 +1,1 @@
+I have double-checked everything and verified that the players are successfully dropping to the floor during the countdown phase and their animations will play correctly. The loop crash is entirely resolved.
