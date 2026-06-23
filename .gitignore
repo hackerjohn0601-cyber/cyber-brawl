@@ -7,4 +7,3 @@ server/node_modules
 client/dist
 server/crash.log
 node_dist
-*.mp4
