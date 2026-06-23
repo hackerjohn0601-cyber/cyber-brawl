@@ -282,33 +282,6 @@ export class Player {
         this.attackCooldown = false;
         if (this.diveKickReady) this.executeDiveKick();
         return; // Abort normal attack sequence
-      } else if (this.characterType === 'Gunslinger') {
-        this.attackType = `combo${this.comboStep}`;
-        this.comboStep++;
-        if (this.comboStep > 2) this.comboStep = 1;
-        
-        // Spawn a fast bullet
-        if (this.engine) {
-          import('./AudioManager.js').then(({ audioManager }) => { if(audioManager.playFireball) audioManager.playFireball() });
-          const bullet = {
-            type: 'fireball',
-            x: this.facing === 1 ? this.x + this.width : this.x - 20,
-            y: this.y + 20 + (Math.random() * 10 - 5),
-            width: 15, height: 5,
-            velocity: { x: this.facing * 1200, y: 0 },
-            owner: this, facing: this.facing, isActive: true,
-            damage: 6, knockback: this.facing * 300,
-            update: function(dt) {
-              this.x += this.velocity.x * dt;
-              if (this.x < -100 || this.x > 1200) this.isActive = false;
-            },
-            draw: function(ctx) {
-              ctx.fillStyle = '#f39c12';
-              ctx.fillRect(this.x, this.y, this.width, this.height);
-            }
-          };
-          this.engine.addEntity(bullet);
-        }
       } else if (this.keys[this.controls.defend] || (this.controls.down && this.keys[this.controls.down])) {
         if (this.cooldowns.sweep && this.cooldowns.sweep.current <= 0) {
           this.attackType = 'sweep';
@@ -1122,56 +1095,6 @@ export class Player {
         // Ninja Passive: Attack boost after teleport
         this.attackBoostTimer = 2.0; 
       }, 150);
-
-    } else if (this.characterType === 'Gunslinger') {
-      import('./AudioManager.js').then(({ audioManager }) => { if(audioManager.playDash) audioManager.playDash() });
-      
-      // Backflip
-      this.velocity.x = -this.facing * 500;
-      this.velocity.y = -600;
-      this.isGrounded = false;
-      this.y -= 5;
-      
-      // Drop grenades
-      if (this.engine) {
-        for (let i = 0; i < 3; i++) {
-          const grenade = {
-            type: 'fireball',
-            x: this.x + this.width/2,
-            y: this.y + this.height,
-            width: 12, height: 12,
-            velocity: { x: this.facing * (200 + i * 150), y: -300 },
-            owner: this, facing: this.facing, isActive: true,
-            damage: 15, knockback: this.facing * 500,
-            update: function(dt) {
-              this.velocity.y += 1500 * dt; // gravity
-              this.x += this.velocity.x * dt;
-              this.y += this.velocity.y * dt;
-              if (this.owner && this.owner.engine && (this.y > this.owner.engine.floorY || this.x < -100 || this.x > 1200)) {
-                 this.isActive = false;
-                 // small explosion visual
-                 const exp = {
-                   type: 'visual', x: this.x, y: this.y, timer: 0, life: 0.2, isActive: true,
-                   update: function(dt2) { this.timer += dt2; if (this.timer >= this.life) this.isActive = false; },
-                   draw: function(ctx) {
-                     ctx.fillStyle = `rgba(231, 76, 60, ${1 - this.timer/this.life})`;
-                     ctx.beginPath(); ctx.arc(this.x, this.y, 30, 0, Math.PI*2); ctx.fill();
-                   }
-                 };
-                 this.owner.engine.addEntity(exp);
-              }
-            },
-            draw: function(ctx) {
-              ctx.fillStyle = '#e74c3c';
-              ctx.beginPath();
-              ctx.arc(this.x, this.y, 6, 0, Math.PI*2);
-              ctx.fill();
-            }
-          };
-          this.engine.addEntity(grenade);
-        }
-      }
-      setTimeout(() => { this.isUsingSkill = false; }, 300);
     }
 
     this.cooldowns.skill.current = this.cooldowns.skill.max;
@@ -1567,35 +1490,6 @@ export class Player {
         };
         this.engine.addEntity(meteor);
       }, 200);
-    } else if (this.characterType === 'Gunslinger') {
-      import('./AudioManager.js').then(({ audioManager }) => { if(audioManager.playFireball) audioManager.playFireball() });
-      if (this.engine) {
-        for (let i = 0; i < 15; i++) {
-          setTimeout(() => {
-            if (!this.engine || this.isDead) return;
-            const bullet = {
-              type: 'fireball',
-              x: this.facing === 1 ? this.x + this.width : this.x - 20,
-              y: this.y + 20 + (Math.random() * 20 - 10),
-              width: 20, height: 6,
-              velocity: { x: this.facing * 1500, y: (Math.random() - 0.5) * 400 },
-              owner: this, facing: this.facing, isActive: true,
-              damage: 12, knockback: this.facing * 400,
-              update: function(dt) {
-                this.x += this.velocity.x * dt;
-                this.y += this.velocity.y * dt;
-                if (this.x < -100 || this.x > 1200 || this.y < 0 || this.y > 600) this.isActive = false;
-              },
-              draw: function(ctx) {
-                ctx.fillStyle = '#e84118';
-                ctx.fillRect(this.x, this.y, this.width, this.height);
-              }
-            };
-            this.engine.addEntity(bullet);
-          }, i * 50);
-        }
-      }
-      setTimeout(() => { this.isUsingSkill = false; }, 800);
     }
   }
 
@@ -1782,7 +1676,7 @@ export class Player {
       return;
     }
 
-    const isRanged = ['Sniper', 'Mage', 'Gunslinger'].includes(this.characterType);
+    const isRanged = ['Sniper', 'Mage'].includes(this.characterType);
     const attackRange = isRanged ? 400 : 80;
 
     // Melee/Ranged Attack Priority
@@ -2350,10 +2244,6 @@ export class Player {
         if (skinId === 'archmage') return '#fbc531';
         if (skinId === 'darkmage') return '#273c75';
         return '#00b894'; // Greenish cloak base
-      case 'Gunslinger':
-        if (skinId === 'renegade') return '#c23616';
-        if (skinId === 'outlaw') return '#2f3640';
-        return '#e84118'; // Orange/Red base
       default:
         return this.color;
     }
@@ -2366,7 +2256,6 @@ export class Player {
       case 'Tank': return '/sprites/char_0_3.png';
       case 'Ninja': return '/sprites/char_0_4.png';
       case 'Sniper': return '/sprites/char_0_1.png';
-      case 'Gunslinger': return '/sprites/char_1_0.png'; // Added Gunslinger sprite
       case 'Mage': return '/sprites/char_0_6.png';
       case 'Brawler': return '/sprites/char_1_4.png';
       default: return '/sprites/char_0_0.png';
