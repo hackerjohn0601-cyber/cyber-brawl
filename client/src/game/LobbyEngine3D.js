@@ -772,6 +772,18 @@ export class LobbyEngine3D {
 
     for (const [id, sprite] of this.playerSprites.entries()) {
       this.updatePlayerSpriteTexture(sprite);
+      
+      // BRUTE FORCE: Hide any remote sprite that matches our local player
+      if (this.localPlayer && sprite.userData.player) {
+        const rp = sprite.userData.player;
+        const sameUsername = rp.username && this.localPlayer.username && 
+                            rp.username === this.localPlayer.username;
+        const samePosition = Math.abs(rp.x - this.localPlayer.x) < 5 && 
+                             Math.abs((rp.z || 0) - (this.localPlayer.z || 0)) < 5;
+        if (sameUsername || samePosition) {
+          sprite.visible = false;
+        }
+      }
     }
 
     this.renderer.render(this.scene, this.camera);
