@@ -2131,8 +2131,8 @@ export class Player {
           if (audioManager.playDefend) audioManager.playDefend();
         });
       }
-       if (!this.engine) {
-      // 3D LOBBY MOVEMENT
+       if (import.meta.env.DEV && !this.engine) {
+      // 3D LOBBY MOVEMENT (dev mode only)
       const moveSpeed = this.speed * deltaTime;
       if (this.keys[this.controls.left]) this.velocity.x = -moveSpeed;
       else if (this.keys[this.controls.right]) this.velocity.x = moveSpeed;
