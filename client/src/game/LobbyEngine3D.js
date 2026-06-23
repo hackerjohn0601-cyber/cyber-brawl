@@ -99,7 +99,7 @@ export class LobbyEngine3D {
   onPointerMove(e) {
     if (!this.isPointerLocked) return;
 
-    const sensitivity = 0.003;
+    const sensitivity = 0.006;
     this.cameraAngle -= e.movementX * sensitivity;
     this.cameraPitch -= e.movementY * sensitivity;
 
