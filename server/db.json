@@ -21,13 +21,13 @@
           "Sniper": 5,
           "Mage": 5
         },
-        "cpuMatches": 1,
-        "tokens": 2193,
+        "cpuMatches": 0,
+        "tokens": 2204,
         "goldCoins": 63,
-        "trophies": 3262,
+        "trophies": 3286,
         "charPlayTime": {
           "Sniper": 104,
-          "Striker": 63,
+          "Striker": 64,
           "Brawler": 39,
           "Assassin": 39,
           "Tank": 44,
@@ -41,7 +41,7 @@
         },
         "quests": {
           "parries": 0,
-          "cpuDefeated": 312,
+          "cpuDefeated": 313,
           "ultimatesHit": 0,
           "skillsUsed": 0,
           "totalWins": 0,
@@ -81,7 +81,7 @@
             "desc": "每日: 成功格擋 30 次",
             "target": 30,
             "type": "parries",
-            "progress": 25,
+            "progress": 26,
             "done": false
           },
           {
@@ -228,6 +228,10 @@
         "cpuMatches": 0,
         "tokens": 0,
         "goldCoins": 10000,
+        "trophies": 0,
+        "charPlayTime": {
+          "Striker": 0
+        },
         "playerEquipment": {
           "defense": 6,
           "attack": 4,
@@ -245,14 +249,6 @@
         "equippedSkins": {},
         "dailyQuests": [
           {
-            "id": "daily_parry_30",
-            "desc": "每日: 成功格擋 30 次",
-            "target": 30,
-            "type": "parries",
-            "progress": 0,
-            "done": false
-          },
-          {
             "id": "daily_cpu_3",
             "desc": "每日: 打贏人機 3 場",
             "target": 3,
@@ -261,19 +257,24 @@
             "done": false
           },
           {
-            "id": "daily_ult_5",
-            "desc": "每日: 累計大招命中 5 次",
+            "id": "daily_cpu_5",
+            "desc": "每日: 打贏人機 5 場",
             "target": 5,
-            "type": "ultimatesHit",
+            "type": "cpuDefeated",
+            "progress": 0,
+            "done": false
+          },
+          {
+            "id": "daily_win_5",
+            "desc": "每日: 對戰獲勝 5 場 (含線上)",
+            "target": 5,
+            "type": "totalWins",
             "progress": 0,
             "done": false
           }
         ],
-        "lastDailyDate": "Sun Jun 21 2026",
-        "hasUsedDailyRefresh": false,
-        "charPlayTime": {
-          "Striker": 0
-        }
+        "lastDailyDate": "Tue Jun 23 2026",
+        "hasUsedDailyRefresh": false
       }
     }
   },
