@@ -58,9 +58,6 @@ export class Player {
     this.counterOriginalX = 0;
     this.counterStanceTimer = 0;
     this.isBursting = false;
-    
-    this.chatMessage = null;
-    this.chatTimer = 0;
     this.isActive = true;
     this.burstTimer = 0;
 
@@ -186,7 +183,7 @@ export class Player {
         if ((key === this.controls.skill || key === this.controls.up) && !this.isDefending && !this.isDiveKicking && !this.isStunned) {
           if (this.keys[this.controls.skill] && this.keys[this.controls.up] && this.cooldowns.pursuit.current <= 0) {
             let opponent = null;
-            if (this.engine) opponent = this.engine.entities.find(e => e !== this && e.health !== undefined);
+            if (this.engine) opponent = this.engine.entities.find(e => this.isEnemy(e));
             
             const isOpponentHighAirborne = opponent && (!opponent.isGrounded && opponent.y < 400 || opponent.isDiveKicking);
             if (isOpponentHighAirborne) {
@@ -240,6 +237,18 @@ export class Player {
         }
       });
     }
+    this.team = 0;
+  }
+
+  isEnemy(entity) {
+    if (entity === this) return false;
+    if (entity.health === undefined) return false;
+    if (entity.isDead) return false;
+    if (this.team && entity.team) {
+      return this.team !== entity.team;
+    }
+    // Fallback if teams aren't assigned
+    return true;
   }
 
   setChatMessage(msg) {
@@ -562,7 +571,7 @@ export class Player {
       let opponent = null;
       for (let i = 0; i < this.engine.entities.length; i++) {
         const e = this.engine.entities[i];
-        if (e.health !== undefined && e !== this) {
+        if (this.isEnemy(e)) {
           opponent = e;
           break;
         }
@@ -830,7 +839,7 @@ export class Player {
             if (this.owner && this.owner.engine) {
               for (let i = 0; i < this.owner.engine.entities.length; i++) {
                 const e = this.owner.engine.entities[i];
-                if (e.health !== undefined && e !== this.owner && !e.isClone) {
+                if (this.owner.isEnemy(e) && !e.isClone) {
                   opponent = e; break;
                 }
               }
@@ -917,7 +926,7 @@ export class Player {
               if (this.owner && this.owner.engine) {
                 for (let i = 0; i < this.owner.engine.entities.length; i++) {
                   const e = this.owner.engine.entities[i];
-                  if (e.health !== undefined && e !== this.owner && !e.isClone) { opponent = e; break; }
+                  if (this.owner.isEnemy(e) && !e.isClone) { opponent = e; break; }
                 }
               }
               if (opponent) {
@@ -978,7 +987,7 @@ export class Player {
               if (this.owner && this.owner.engine) {
                 for (let i = 0; i < this.owner.engine.entities.length; i++) {
                   const e = this.owner.engine.entities[i];
-                  if (e.health !== undefined && e !== this.owner && !e.isClone) { opponent = e; break; }
+                  if (this.owner.isEnemy(e) && !e.isClone) { opponent = e; break; }
                 }
               }
               if (opponent) {
@@ -1125,7 +1134,7 @@ export class Player {
     else if (this.characterType === 'Tank') {
        // Command Grab!
        let target = null;
-       if (this.engine) target = this.engine.entities.find(e => e !== this && e.health !== undefined);
+       if (this.engine) target = this.engine.entities.find(e => this.isEnemy(e));
        
        // Check distance
        if (target && Math.abs(target.x - this.x) < 120) {
@@ -1232,7 +1241,7 @@ export class Player {
           }
           
           if (this.owner.engine) {
-             const target = this.owner.engine.entities.find(e => e !== this.owner && e.health !== undefined);
+             const target = this.owner.engine.entities.find(e => this.owner.isEnemy(e));
              if (target) {
                 if (target.x + target.width > this.x && target.x < this.x + this.width) {
                    if (target.x + target.width / 2 < this.x + this.width / 2) {
@@ -1328,7 +1337,7 @@ export class Player {
                   if (this.owner && this.owner.engine) {
                     for (let i = 0; i < this.owner.engine.entities.length; i++) {
                       const e = this.owner.engine.entities[i];
-                      if (e.type === 'player' && e.health !== undefined && e !== this.owner && !e.isClone) {
+                      if (e.type === 'player' && this.owner.isEnemy(e) && !e.isClone) {
                         opponent = e; break;
                       }
                     }
@@ -1427,7 +1436,7 @@ export class Player {
             if (this.owner && this.owner.engine) {
               for (let i = 0; i < this.owner.engine.entities.length; i++) {
                 const e = this.owner.engine.entities[i];
-                if (e.health !== undefined && e !== this.owner) {
+                if (this.owner.isEnemy(e)) {
                   opponent = e; break;
                 }
               }
@@ -1469,7 +1478,7 @@ export class Player {
       if ((key === this.controls.skill || key === this.controls.up) && !this.isDefending && !this.isDiveKicking && !this.isStunned) {
         if (this.keys[this.controls.skill] && this.keys[this.controls.up] && this.cooldowns.pursuit.current <= 0) {
           let opponent = null;
-          if (this.engine) opponent = this.engine.entities.find(e => e !== this && e.health !== undefined);
+          if (this.engine) opponent = this.engine.entities.find(e => this.isEnemy(e));
           
           const isOpponentHighAirborne = opponent && (!opponent.isGrounded && opponent.y < 400 || opponent.isDiveKicking);
           if (isOpponentHighAirborne) {
@@ -1594,7 +1603,7 @@ export class Player {
     let minDist = Infinity;
     for (const e of entities) {
       const isFriendly = (e === this.owner) || (this.owner && e.owner === this.owner) || (e.owner === this);
-      if (e !== this && e.health !== undefined && e.health > 0 && !isFriendly) {
+      if (this.isEnemy(e) && e.health > 0) {
         const d = Math.abs(e.x - this.x);
         if (d < minDist) {
           minDist = d;
@@ -1744,7 +1753,7 @@ export class Player {
           this.engine.addEntity(explosion);
           
           for (const opponent of this.engine.entities) {
-            if (opponent !== this && opponent.health !== undefined && !opponent.isClone) {
+            if (this.isEnemy(opponent) && !opponent.isClone) {
               const face = explosion.x < opponent.x + opponent.width/2 ? 1 : -1;
               this.engine.applyDamage(this, opponent, 80, face * 1800, this);
               // Start the cinematic cutscene!
@@ -1988,7 +1997,7 @@ export class Player {
 
     // Auto-Aim: Always face the opponent
     if (this.engine && !this.isStunned) {
-      const opponent = this.engine.entities.find(e => e !== this && e.health !== undefined);
+      const opponent = this.engine.entities.find(e => this.isEnemy(e));
       if (opponent) {
         this.facing = opponent.x > this.x ? 1 : -1;
       }

@@ -2442,6 +2442,7 @@ const initGame = () => {
   p1.engine = engine;
   p1.isOnline = isOnline.value;
   p1.isLocalPlayer = isSpectator.value ? false : (isOnline.value ? networkManager.isHost : true);
+  p1.team = 1;
 
   // Player 2 (Blue)
   const p2Controls = isOnline.value 
@@ -2452,6 +2453,7 @@ const initGame = () => {
   p2.engine = engine;
   p2.isOnline = isOnline.value;
   p2.isLocalPlayer = isSpectator.value ? false : (isOnline.value ? !networkManager.isHost : !isVsCPU.value);
+  p2.team = 2;
 
   if (isOnline.value) {
     if (networkManager.isHost) {

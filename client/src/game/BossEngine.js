@@ -86,6 +86,7 @@ export class BossEngine {
       this.canvas.width,
       this.canvas.height
     );
+    this.boss.team = 2;
     
     // Setup players
     player1.x = 150;
@@ -94,6 +95,7 @@ export class BossEngine {
     player1.facing = 1;
     player1.isDead = false;
     player1.isBossPlayer = true;
+    player1.team = 1;
     this.players.push(player1);
     
     player2.x = this.canvas.width - 250;
@@ -102,6 +104,7 @@ export class BossEngine {
     player2.facing = -1;
     player2.isDead = false;
     player2.isBossPlayer = true;
+    player2.team = 1;
     if (isNPC) {
       player2.isCPU = true;
       player2.isBossNPC = true;
