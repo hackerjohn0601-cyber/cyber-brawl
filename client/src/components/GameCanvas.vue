@@ -252,6 +252,47 @@
       </div>
     </div>
 
+    <!-- BOSS TEAM SELECT -->
+    <div v-if="gameState === 'BOSS_TEAM_SELECT'" class="auth-screen">
+      <div class="auth-container" style="max-width: 600px; background: rgba(20, 20, 30, 0.95); border: 2px solid #e74c3c;">
+        <h2 style="color: #e74c3c;">🐉 準備對戰：暗影恐龍</h2>
+        <p style="text-align: center; color: #ccc;">這是一個強大的 Boss！請選擇你的隊友一起並肩作戰！</p>
+        
+        <div style="margin: 20px 0; text-align: center;">
+          <h3 style="color: #f1c40f;">選擇你的角色</h3>
+          <select v-model="p1Choice" class="auth-input">
+            <option value="Striker">Striker (近戰/火)</option>
+            <option value="Tank">Tank (防禦/土)</option>
+            <option value="Mage">Mage (遠程/冰)</option>
+            <option value="Assassin">Assassin (刺客/雷)</option>
+            <option value="Ninja">Ninja (雙刀/風)</option>
+            <option value="Brawler">Brawler (重擊/力)</option>
+            <option value="Sniper">Sniper (狙擊/雷)</option>
+            <option value="Gunslinger">Gunslinger (雙槍/火)</option>
+          </select>
+        </div>
+
+        <div style="margin: 20px 0; text-align: center;">
+          <h3 style="color: #3498db;">選擇 NPC 隊友角色</h3>
+          <select v-model="bossNpcChoice" class="auth-input">
+            <option value="Striker">Striker (近戰/火)</option>
+            <option value="Tank">Tank (防禦/土)</option>
+            <option value="Mage">Mage (遠程/冰)</option>
+            <option value="Assassin">Assassin (刺客/雷)</option>
+            <option value="Ninja">Ninja (雙刀/風)</option>
+            <option value="Brawler">Brawler (重擊/力)</option>
+            <option value="Sniper">Sniper (狙擊/雷)</option>
+            <option value="Gunslinger">Gunslinger (雙槍/火)</option>
+          </select>
+        </div>
+
+        <div style="display: flex; gap: 20px; justify-content: center; margin-top: 30px;">
+          <button class="auth-btn" style="background: #e74c3c;" @click="startBossRaid(true)">與 NPC 組隊開戰</button>
+          <button class="auth-btn" style="background: #95a5a6;" @click="() => { gameState = 'LOBBY'; initLobby(); }">返回大廳</button>
+        </div>
+      </div>
+    </div>
+
     <!-- AUTH SCREEN -->
     <div v-if="gameState === 'AUTH'" class="auth-screen">
       <div class="auth-box">
@@ -695,7 +736,7 @@
     </div>
 
     <!-- BATTLE SCREEN -->
-    <div v-if="gameState === 'FIGHT'" class="game-container">
+    <div v-show="gameState === 'FIGHT' || gameState === 'BOSS_FIGHT'" class="game-container">
       <canvas ref="gameCanvas" width="1024" height="576"></canvas>
 
       <!-- UI Overlay for Health Bars -->
@@ -921,7 +962,7 @@
     </div>
 
     <!-- MOBILE CONTROLS OVERLAY -->
-    <div v-if="isTouchDevice && (gameState === 'FIGHT' || gameState === 'LOBBY' || gameState === 'TRAINING')" class="mobile-controls-overlay">
+    <div v-if="isTouchDevice && (gameState === 'FIGHT' || gameState === 'BOSS_FIGHT' || gameState === 'LOBBY' || gameState === 'TRAINING')" class="mobile-controls-overlay">
       <!-- Virtual Joystick Zone (Left Half) -->
       <div class="joystick-zone" @touchstart.prevent="handleTouchStart" @touchmove.prevent="handleTouchMove" @touchend.prevent="handleTouchEnd" @touchcancel.prevent="handleTouchEnd">
         <div class="joystick-base" v-show="joystick.active" :style="{ left: joystick.originX + 'px', top: joystick.originY + 'px' }">
@@ -935,7 +976,7 @@
         <button class="action-btn skill" @touchstart.prevent="dispatchKeyEvent('skill', true)" @touchend.prevent="dispatchKeyEvent('skill', false)" @touchcancel.prevent="dispatchKeyEvent('skill', false)">🔥</button>
         <button class="action-btn defend" @touchstart.prevent="dispatchKeyEvent('defend', true)" @touchend.prevent="dispatchKeyEvent('defend', false)" @touchcancel.prevent="dispatchKeyEvent('defend', false)">🛡️</button>
         
-        <template v-if="gameState === 'FIGHT' || gameState === 'TRAINING'">
+        <template v-if="gameState === 'FIGHT' || gameState === 'BOSS_FIGHT' || gameState === 'TRAINING'">
           <button class="action-btn intercept" @touchstart.prevent="dispatchIntercept(true)" @touchend.prevent="dispatchIntercept(false)" @touchcancel.prevent="dispatchIntercept(false)">🏃</button>
           <button class="action-btn ultimate" @touchstart.prevent="dispatchKeyEvent('ultimate', true)" @touchend.prevent="dispatchKeyEvent('ultimate', false)" @touchcancel.prevent="dispatchKeyEvent('ultimate', false)">⚡</button>
           <button class="action-btn burst" @touchstart.prevent="dispatchKeyEvent('burst', true)" @touchend.prevent="dispatchKeyEvent('burst', false)" @touchcancel.prevent="dispatchKeyEvent('burst', false)">💥</button>
@@ -960,11 +1001,12 @@ import { Player } from '../game/Player';
 import { audioManager } from '../game/AudioManager.js';
 import { networkManager } from '../game/NetworkManager.js';
 import { LobbyEngine } from '../game/LobbyEngine.js';
+import { BossEngine } from '../game/BossEngine.js';
 import { SKINS_DB } from '../game/SkinsDB';
 
-// 'LOBBY', 'TUTORIAL', 'MULTIPLAYER_LOBBY', 'CHAR_SELECT', 'FIGHT'
-// 'AUTH', 'LOBBY', 'TUTORIAL', 'MULTIPLAYER_LOBBY', 'CHAR_SELECT', 'FIGHT'
+// 'LOBBY', 'TUTORIAL', 'MULTIPLAYER_LOBBY', 'CHAR_SELECT', 'FIGHT', 'BOSS_TEAM_SELECT', 'BOSS_FIGHT'
 const gameState = ref('AUTH');
+const bossNpcChoice = ref('Tank');
 const isVsCPU = ref(false);
 const isOnline = ref(true); // Default to online for lobby
 const isSpectator = ref(false);
@@ -1932,6 +1974,9 @@ const initLobby = () => {
       gameState.value = 'SKIN_SHOP';
       if (lobbyEngine) lobbyEngine.stop();
       openSkinShop();
+    } else if (action === 'boss_raid') {
+      gameState.value = 'BOSS_TEAM_SELECT';
+      if (lobbyEngine) lobbyEngine.stop();
     }
   };
   
@@ -2674,6 +2719,55 @@ const initGame = () => {
 
 const resetGame = () => {
   initGame();
+};
+
+const startBossRaid = (useNPC) => {
+  if (engine) {
+    engine.stop();
+    engine = null;
+  }
+  
+  gameState.value = 'BOSS_FIGHT';
+  
+  nextTick(() => {
+    engine = new BossEngine(gameCanvas.value);
+    
+    // Player 1
+    const p1Color = getEquippedSkinColor(p1Choice.value);
+    const p1 = new Player(100, 100, p1Color, keyBindings.value, 1, p1Choice.value, false, charLevels.value[p1Choice.value] || 1, undefined, equippedSkins.value[p1Choice.value] || 'default', trophies.value);
+    p1.isLocalPlayer = true;
+    p1.username = loggedInUsername.value;
+    
+    // Player 2 / NPC
+    const p2Color = getEquippedSkinColor(bossNpcChoice.value);
+    const p2 = new Player(700, 100, p2Color, isVsCPU.value ? {
+      up: 'ArrowUp', left: 'ArrowLeft', down: 'ArrowDown', right: 'ArrowRight',
+      attack: 'm', defend: ',', skill: '.'
+    } : keyBindings.value, -1, bossNpcChoice.value, useNPC, charLevels.value[bossNpcChoice.value] || 1, undefined, equippedSkins.value[bossNpcChoice.value] || 'default', 0);
+    p2.isLocalPlayer = !useNPC;
+    p2.username = useNPC ? 'NPC Teammate' : 'Player 2';
+
+    engine.init(p1, p2, useNPC);
+    
+    // Add callbacks
+    engine.onBossHealthChange = (health, max, phase) => {
+      // Can update Vue state if needed, but BossEngine draws its own UI
+    };
+    
+    engine.onVictory = (gold) => {
+      setTimeout(() => {
+        alert(`恭喜擊敗暗影恐龍！獲得裝備金幣: ${gold}`);
+        gameState.value = 'LOBBY';
+        initLobby(); // Return to lobby
+      }, 5000);
+    };
+    
+    engine.onDefeat = () => {
+      // You don't get defeated, you just respawn until you beat it
+    };
+    
+    engine.start();
+  });
 };
 
 // --- Admin Functions ---
