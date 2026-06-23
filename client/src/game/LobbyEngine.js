@@ -256,15 +256,15 @@ export class LobbyEngine {
     // Draw lobby floor B1 (Basement) - Eerie path
     this.drawEerieBasement();
 
+    // Draw Leaderboard Screens (B1 wall)
+    this.drawLeaderboards(this.floors[0]);
+
     // Draw lobby floor 1
     this.ctx.fillStyle = '#485460';
     this.ctx.fillRect(0, this.floors[1], this.mapWidth, 150);
     
     // Draw Chill Zone Decor (Floor 1 left side)
     this.drawChillZone(0, this.floors[1]);
-
-    // Draw Leaderboard Screens (Floor 1 wall)
-    this.drawLeaderboards(this.floors[1]);
 
     // Draw lobby floor 2
     this.ctx.fillStyle = '#485460';
@@ -499,11 +499,11 @@ export class LobbyEngine {
     const screenHeight = 220;
     const y = floorY - 260; // Up on the wall
 
-    // Trophies Leaderboard (x = 500)
-    this.drawSingleLeaderboardScreen(500, y, screenWidth, screenHeight, '🏆 獎杯榜 TOP 5', 'trophies', '#fbc531');
+    // Trophies Leaderboard (x = 300)
+    this.drawSingleLeaderboardScreen(300, y, screenWidth, screenHeight, '🏆 獎杯榜 TOP 5', 'trophies', '#fbc531');
 
-    // Time Leaderboard (x = 800)
-    this.drawSingleLeaderboardScreen(800, y, screenWidth, screenHeight, '⏱️ 肝帝榜 TOP 5', 'time', '#4cd137');
+    // Time Leaderboard (x = 650)
+    this.drawSingleLeaderboardScreen(650, y, screenWidth, screenHeight, '⏱️ 肝帝榜 TOP 5', 'time', '#4cd137');
   }
 
   drawSingleLeaderboardScreen(x, y, width, height, title, sortKey, color) {
