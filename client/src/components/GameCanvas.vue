@@ -1885,6 +1885,9 @@ const initLobby = () => {
   
   if (!lobbyCanvas.value) return;
   lobbyEngine = new LobbyEngine(lobbyCanvas.value);
+  if (leaderboardData.value && leaderboardData.value.length > 0) {
+    lobbyEngine.setLeaderboardData(leaderboardData.value);
+  }
   
   const playerColor = getEquippedSkinColor(p1Choice.value);
   const player = new Player(100, 100, playerColor, keyBindings.value, 1, p1Choice.value, false, charLevels.value[p1Choice.value] || 1, undefined, equippedSkins.value[p1Choice.value] || 'default', trophies.value);
@@ -2206,7 +2209,13 @@ const setupNetworking = () => {
 
   networkManager.socket.on('leaderboardData', (data) => {
     leaderboardData.value = data;
+    if (typeof lobbyEngine !== 'undefined' && lobbyEngine) {
+      lobbyEngine.setLeaderboardData(data);
+    }
   });
+
+  // Request leaderboard immediately after connection
+  networkManager.socket.emit('getLeaderboard');
 };
 
 const selectChar = (playerNum, charName) => {

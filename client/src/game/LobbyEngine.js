@@ -24,6 +24,9 @@ export class LobbyEngine {
     // Remote players map: socketId -> Player
     this.remotePlayers = new Map();
     
+    // Leaderboard Data
+    this.leaderboardData = [];
+    
     // Interactive objects (Shifted +1024 to the right for the portal zone)
     this.portals = [
       { id: 'elevator_up', x: 1124, y: this.floors[1], text: 'ELEVATOR (Up)', color: '#8c7ae6', floor: 1 },
@@ -106,6 +109,10 @@ export class LobbyEngine {
         rp.characterType = data.characterType;
       }
     }
+  }
+
+  setLeaderboardData(data) {
+    this.leaderboardData = data;
   }
 
   setArcadeSlots(slots) {
@@ -255,6 +262,9 @@ export class LobbyEngine {
     
     // Draw Chill Zone Decor (Floor 1 left side)
     this.drawChillZone(0, this.floors[1]);
+
+    // Draw Leaderboard Screens (Floor 1 wall)
+    this.drawLeaderboards(this.floors[1]);
 
     // Draw lobby floor 2
     this.ctx.fillStyle = '#485460';
@@ -456,120 +466,115 @@ export class LobbyEngine {
     this.ctx.restore();
   }
 
-  drawBossTeaser(startX, floorY) {
+  drawBossTeaser(x, y) {
+    // Large metal door
+    this.ctx.fillStyle = '#2d3436';
+    this.ctx.fillRect(x, y - 200, 300, 200);
+    
+    // Warning tape
     this.ctx.save();
-    
-    // Huge metallic sealed vault door
-    const doorWidth = 400;
-    const doorHeight = 350;
-    const doorX = startX + 150;
-    const doorY = floorY - doorHeight;
-
-    // Door frame / wall reinforcement
-    this.ctx.fillStyle = '#2f3640';
-    this.ctx.fillRect(doorX - 20, doorY - 20, doorWidth + 40, doorHeight + 20);
-    
-    // The vault door
-    this.ctx.fillStyle = '#718093';
-    this.ctx.fillRect(doorX, doorY, doorWidth, doorHeight);
-    
-    // Door panels and bolts
-    this.ctx.fillStyle = '#353b48';
-    this.ctx.fillRect(doorX + 20, doorY + 20, doorWidth - 40, doorHeight - 40);
-    this.ctx.fillStyle = '#2f3640';
-    for (let i = 0; i < 8; i++) {
-      this.ctx.beginPath();
-      this.ctx.arc(doorX + 10, doorY + 10 + (i * 45), 5, 0, Math.PI * 2);
-      this.ctx.arc(doorX + doorWidth - 10, doorY + 10 + (i * 45), 5, 0, Math.PI * 2);
-      this.ctx.fill();
-    }
-
-    // Huge Warning Lock in center
-    this.ctx.fillStyle = '#c23616'; // Dark Red
-    this.ctx.beginPath();
-    this.ctx.arc(doorX + doorWidth / 2, doorY + doorHeight / 2, 60, 0, Math.PI * 2);
-    this.ctx.fill();
-    this.ctx.fillStyle = '#192a56';
-    this.ctx.beginPath();
-    this.ctx.arc(doorX + doorWidth / 2, doorY + doorHeight / 2, 40, 0, Math.PI * 2);
-    this.ctx.fill();
-    
-    // Glowing red hazard lights around door
-    const time = Date.now() / 500;
-    const glowAlpha = (Math.sin(time) + 1) / 2 * 0.5 + 0.1; // Pulsing 0.1 ~ 0.6
-    this.ctx.fillStyle = `rgba(232, 65, 24, ${glowAlpha})`;
-    this.ctx.fillRect(doorX - 10, doorY - 10, 20, 20);
-    this.ctx.fillRect(doorX + doorWidth - 10, doorY - 10, 20, 20);
-    this.ctx.shadowBlur = 20;
-    this.ctx.shadowColor = '#e84118';
-    this.ctx.fillStyle = '#e84118';
-    this.ctx.beginPath();
-    this.ctx.arc(doorX, doorY, 5, 0, Math.PI * 2);
-    this.ctx.arc(doorX + doorWidth, doorY, 5, 0, Math.PI * 2);
-    this.ctx.fill();
-    this.ctx.shadowBlur = 0;
-
-    // Yellow/Black Barricade Tape across the door
-    this.ctx.save();
-    this.ctx.translate(doorX, doorY + 100);
-    this.ctx.rotate(15 * Math.PI / 180);
-    this.ctx.fillStyle = '#fbc531';
-    this.ctx.fillRect(-50, 0, doorWidth + 100, 30);
-    this.ctx.fillStyle = '#2f3640';
-    for (let i = -50; i < doorWidth + 100; i += 40) {
-      this.ctx.beginPath();
-      this.ctx.moveTo(i, 0);
-      this.ctx.lineTo(i + 15, 0);
-      this.ctx.lineTo(i - 5, 30);
-      this.ctx.lineTo(i - 20, 30);
-      this.ctx.fill();
-    }
+    this.ctx.translate(x, y - 100);
+    this.ctx.rotate(Math.PI / -8);
+    this.ctx.fillStyle = '#f1c40f';
+    this.ctx.fillRect(-50, 0, 400, 40);
+    this.ctx.fillStyle = '#000';
+    this.ctx.font = 'bold 24px Inter';
+    this.ctx.fillText('DANGER - KEEP OUT', 150, 28);
     this.ctx.restore();
-
-    this.ctx.save();
-    this.ctx.translate(doorX, doorY + 250);
-    this.ctx.rotate(-10 * Math.PI / 180);
-    this.ctx.fillStyle = '#fbc531';
-    this.ctx.fillRect(-50, 0, doorWidth + 100, 30);
-    this.ctx.fillStyle = '#2f3640';
-    for (let i = -50; i < doorWidth + 100; i += 40) {
+    
+    // Glowing red eyes inside
+    if (Math.random() > 0.95) {
+      this.ctx.fillStyle = '#e74c3c';
       this.ctx.beginPath();
-      this.ctx.moveTo(i, 0);
-      this.ctx.lineTo(i + 15, 0);
-      this.ctx.lineTo(i - 5, 30);
-      this.ctx.lineTo(i - 20, 30);
+      this.ctx.arc(x + 120, y - 120, 5, 0, Math.PI * 2);
+      this.ctx.arc(x + 180, y - 120, 5, 0, Math.PI * 2);
       this.ctx.fill();
     }
-    this.ctx.restore();
+  }
 
-    // Text Sign: COMING SOON
-    this.ctx.fillStyle = '#e84118';
-    this.ctx.font = '900 42px "Arial Black", sans-serif';
+  drawLeaderboards(floorY) {
+    if (!this.leaderboardData || this.leaderboardData.length === 0) return;
+
+    const screenWidth = 260;
+    const screenHeight = 220;
+    const y = floorY - 260; // Up on the wall
+
+    // Trophies Leaderboard (x = 500)
+    this.drawSingleLeaderboardScreen(500, y, screenWidth, screenHeight, '🏆 獎杯榜 TOP 5', 'trophies', '#fbc531');
+
+    // Time Leaderboard (x = 800)
+    this.drawSingleLeaderboardScreen(800, y, screenWidth, screenHeight, '⏱️ 肝帝榜 TOP 5', 'time', '#4cd137');
+  }
+
+  drawSingleLeaderboardScreen(x, y, width, height, title, sortKey, color) {
+    // Screen Border / Frame
+    this.ctx.fillStyle = '#2f3542';
+    this.ctx.fillRect(x - 5, y - 5, width + 10, height + 10);
+    
+    // Inner Screen
+    this.ctx.fillStyle = '#1e272e'; // Dark screen
+    this.ctx.fillRect(x, y, width, height);
+
+    // Neon Border Glow
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(x, y, width, height);
+
+    // Title Background
+    this.ctx.fillStyle = color;
+    this.ctx.globalAlpha = 0.2;
+    this.ctx.fillRect(x, y, width, 30);
+    this.ctx.globalAlpha = 1.0;
+
+    // Title Text
+    this.ctx.fillStyle = color;
+    this.ctx.font = 'bold 16px Inter';
     this.ctx.textAlign = 'center';
-    this.ctx.shadowBlur = 10;
-    this.ctx.shadowColor = 'black';
-    this.ctx.fillText("未完待續", doorX + doorWidth / 2, doorY - 60);
-    
-    this.ctx.fillStyle = '#fbc531';
-    this.ctx.font = 'bold 28px Inter, sans-serif';
-    this.ctx.fillText("BOSS RAID COMING SOON", doorX + doorWidth / 2, doorY - 30);
-    this.ctx.shadowBlur = 0;
-    
-    // Barricade fences at the front
-    this.ctx.fillStyle = '#7f8fa6';
-    for (let i = 0; i < 3; i++) {
-      const fenceX = startX + 50 + (i * 180);
-      this.ctx.fillRect(fenceX, floorY - 50, 150, 50);
-      // Stripes
-      this.ctx.fillStyle = '#c23616';
-      this.ctx.fillRect(fenceX + 10, floorY - 40, 130, 10);
-      this.ctx.fillStyle = '#7f8fa6';
-      // Legs
-      this.ctx.fillRect(fenceX + 20, floorY - 60, 10, 60);
-      this.ctx.fillRect(fenceX + 120, floorY - 60, 10, 60);
-    }
-    
-    this.ctx.restore();
+    this.ctx.fillText(title, x + width / 2, y + 20);
+
+    // Sort Data
+    const sorted = [...this.leaderboardData].sort((a, b) => {
+      if (sortKey === 'trophies') return b.trophies - a.trophies;
+      if (sortKey === 'time') return b.playTime - a.playTime;
+      return 0;
+    }).slice(0, 5); // Only show top 5
+
+    // Draw Entries
+    this.ctx.textAlign = 'left';
+    this.ctx.font = '14px Inter';
+    sorted.forEach((user, index) => {
+      const entryY = y + 55 + index * 32;
+
+      // Draw Row Background
+      if (index % 2 === 0) {
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        this.ctx.fillRect(x + 5, entryY - 18, width - 10, 24);
+      }
+
+      // Rank
+      this.ctx.fillStyle = index === 0 ? '#ffda79' : index === 1 ? '#d1ccc0' : index === 2 ? '#cc8e35' : '#747d8c';
+      this.ctx.font = 'bold 14px Inter';
+      this.ctx.fillText(`#${index + 1}`, x + 15, entryY);
+
+      // Name
+      this.ctx.fillStyle = '#ffffff';
+      // Truncate name if too long
+      let displayName = user.username;
+      if (displayName.length > 10) displayName = displayName.substring(0, 10) + '...';
+      this.ctx.fillText(displayName, x + 45, entryY);
+
+      // Value
+      this.ctx.fillStyle = color;
+      this.ctx.textAlign = 'right';
+      if (sortKey === 'trophies') {
+        this.ctx.fillText(`🏆 ${user.trophies}`, x + width - 15, entryY);
+      } else if (sortKey === 'time') {
+        const h = Math.floor(user.playTime / 60);
+        const m = user.playTime % 60;
+        this.ctx.fillText(`${h}h ${m}m`, x + width - 15, entryY);
+      }
+      this.ctx.textAlign = 'left'; // Reset
+    });
   }
 
   drawStairs(x, y, text, color, direction) {
