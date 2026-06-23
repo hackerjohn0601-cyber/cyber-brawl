@@ -45,6 +45,49 @@ export class LobbyEngine3D {
     // Animation frame
     this.animationId = null;
     this.lastTime = performance.now();
+
+    // Camera Controls
+    this.cameraAngle = 0; // Yaw
+    this.cameraPitch = 0.3; // Pitch
+    this.isDragging = false;
+    this.previousMousePosition = { x: 0, y: 0 };
+
+    this.onMouseDownBound = this.onMouseDown.bind(this);
+    this.onMouseMoveBound = this.onMouseMove.bind(this);
+    this.onMouseUpBound = this.onMouseUp.bind(this);
+
+    this.canvas.addEventListener('mousedown', this.onMouseDownBound);
+    window.addEventListener('mousemove', this.onMouseMoveBound);
+    window.addEventListener('mouseup', this.onMouseUpBound);
+  }
+
+  onMouseDown(e) {
+    if (e.button === 0) {
+      this.isDragging = true;
+      this.previousMousePosition = { x: e.clientX, y: e.clientY };
+    }
+  }
+
+  onMouseMove(e) {
+    if (this.isDragging) {
+      const deltaX = e.clientX - this.previousMousePosition.x;
+      const deltaY = e.clientY - this.previousMousePosition.y;
+
+      this.cameraAngle -= deltaX * 0.01;
+      this.cameraPitch += deltaY * 0.01;
+
+      // Clamp pitch
+      if (this.cameraPitch < 0.1) this.cameraPitch = 0.1;
+      if (this.cameraPitch > Math.PI / 2 - 0.1) this.cameraPitch = Math.PI / 2 - 0.1;
+
+      this.previousMousePosition = { x: e.clientX, y: e.clientY };
+    }
+  }
+
+  onMouseUp(e) {
+    if (e.button === 0) {
+      this.isDragging = false;
+    }
   }
 
   buildEnvironment() {
@@ -81,29 +124,172 @@ export class LobbyEngine3D {
   }
 
   createPortalMesh(x, name, color, action, slotId = null) {
-    const geo = new THREE.BoxGeometry(100, 150, 100);
-    const mat = new THREE.MeshLambertMaterial({ color: color });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(x, 75, -500);
-    mesh.userData = { action, slotId };
-    this.scene.add(mesh);
-
-    // Add 3D Text using CanvasTexture
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 128;
+    canvas.width = 800;
+    canvas.height = 800;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = color;
-    ctx.font = 'bold 24px Inter';
-    ctx.textAlign = 'center';
-    ctx.fillText(name, 128, 64);
+    
+    this.drawEquipment(ctx, canvas.width / 2, canvas.height - 100, name, color, action, slotId);
 
     const texture = new THREE.CanvasTexture(canvas);
-    const spriteMat = new THREE.SpriteMaterial({ map: texture });
+    const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
     const sprite = new THREE.Sprite(spriteMat);
-    sprite.scale.set(150, 75, 1);
-    sprite.position.set(x, 180, -500);
+    
+    sprite.scale.set(400, 400, 1);
+    sprite.position.set(x, 200, -500);
+    sprite.userData = { action, slotId };
     this.scene.add(sprite);
+  }
+
+  drawEquipment(ctx, x, y, text, color, action, slotId) {
+    ctx.save();
+    
+    if (action === 'join_arcade') {
+      // Draw Arcade Cabinet
+      ctx.fillStyle = color;
+      ctx.fillRect(x - 60, y - 200, 120, 200);
+      
+      ctx.fillStyle = '#2d3436';
+      ctx.fillRect(x - 40, y - 180, 80, 80);
+      
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 24px Inter';
+      ctx.textAlign = 'center';
+      ctx.fillText(text, x, y - 220);
+      ctx.fillText('INSERT COIN', x, y - 130);
+    } 
+    else if (action === 'gacha') {
+      // Draw Gacha Machine
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.beginPath(); ctx.ellipse(x, y, 80, 20, 0, 0, Math.PI * 2); ctx.fill();
+      
+      ctx.fillStyle = '#ff4757';
+      ctx.beginPath();
+      ctx.moveTo(x - 70, y); ctx.lineTo(x + 70, y);
+      ctx.lineTo(x + 80, y - 120); ctx.lineTo(x - 80, y - 120);
+      ctx.fill(); ctx.lineWidth = 6; ctx.strokeStyle = '#2f3542'; ctx.stroke();
+      
+      ctx.fillStyle = '#dfe4ea';
+      ctx.beginPath(); ctx.arc(x, y - 60, 30, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      
+      ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.moveTo(x - 20, y - 60); ctx.lineTo(x + 20, y - 60); ctx.stroke();
+      
+      ctx.fillStyle = '#2f3542';
+      ctx.fillRect(x - 30, y - 30, 60, 20);
+      
+      ctx.fillStyle = 'rgba(116, 185, 255, 0.3)';
+      ctx.beginPath(); ctx.arc(x, y - 200, 90, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'; ctx.stroke();
+      
+      const capsules = [
+        {cx: x-30, cy: y-140, c: '#fffa65'}, {cx: x+30, cy: y-150, c: '#00d2d3'},
+        {cx: x, cy: y-180, c: '#ff9f43'}, {cx: x-40, cy: y-200, c: '#ff7675'},
+        {cx: x+40, cy: y-210, c: '#a29bfe'}, {cx: x+10, cy: y-230, c: '#55efc4'},
+        {cx: x-20, cy: y-250, c: '#ffeaa7'}
+      ];
+      for (const c of capsules) {
+        ctx.fillStyle = c.c;
+        ctx.beginPath(); ctx.arc(c.cx, c.cy, 24, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.beginPath(); ctx.arc(c.cx, c.cy, 24, Math.PI, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = 2; ctx.strokeStyle = '#2f3542'; ctx.stroke();
+      }
+      
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.beginPath(); ctx.arc(x - 30, y - 220, 30, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = 'white'; ctx.font = '900 36px "Impact"'; ctx.textAlign = 'center';
+      ctx.shadowBlur = 10; ctx.shadowColor = color; ctx.lineWidth = 6; ctx.strokeStyle = 'black';
+      ctx.strokeText(text, x, y - 320); ctx.fillText(text, x, y - 320);
+    }
+    else if (action === 'skin_shop' || action === 'shop') {
+      const width = 400; const height = 250; const leftX = x - width/2; const topY = y - height;
+      ctx.fillStyle = '#1e1c22'; ctx.fillRect(leftX, topY, width, height);
+      ctx.fillStyle = '#111'; ctx.beginPath();
+      ctx.moveTo(leftX - 20, topY); ctx.lineTo(leftX + width + 20, topY);
+      ctx.lineTo(leftX + width, topY - 40); ctx.lineTo(leftX, topY - 40); ctx.fill();
+
+      const stripeWidth = width / 8;
+      for (let i = 0; i < 8; i++) {
+        ctx.fillStyle = i % 2 === 0 ? color : '#fd79a8';
+        ctx.fillRect(leftX + i * stripeWidth, topY, stripeWidth, 25);
+      }
+      
+      ctx.fillStyle = 'rgba(129, 236, 236, 0.2)'; ctx.strokeStyle = '#2d3436'; ctx.lineWidth = 6;
+      ctx.fillRect(leftX + 20, y - 180, 80, 140); ctx.strokeRect(leftX + 20, y - 180, 80, 140);
+      ctx.fillRect(leftX + width - 100, y - 180, 80, 140); ctx.strokeRect(leftX + width - 100, y - 180, 80, 140);
+      
+      ctx.fillStyle = 'rgba(129, 236, 236, 0.1)'; ctx.fillRect(x - 50, y - 180, 100, 180);
+      ctx.strokeStyle = '#fbc531'; ctx.lineWidth = 4; ctx.strokeRect(x - 50, y - 180, 100, 180);
+      ctx.beginPath(); ctx.moveTo(x, y - 180); ctx.lineTo(x, y); ctx.stroke();
+      ctx.fillStyle = '#fbc531'; ctx.beginPath();
+      ctx.arc(x - 10, y - 100, 6, 0, Math.PI*2); ctx.arc(x + 10, y - 100, 6, 0, Math.PI*2); ctx.fill();
+
+      ctx.fillStyle = 'white'; ctx.font = '900 36px "Impact"'; ctx.textAlign = 'center';
+      ctx.shadowBlur = 10; ctx.shadowColor = color; ctx.lineWidth = 6; ctx.strokeStyle = 'black';
+      ctx.strokeText(text, x, y - 320); ctx.fillText(text, x, y - 320);
+    }
+    else if (action === 'quests') {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; ctx.beginPath(); ctx.ellipse(x, y, 60, 20, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.translate(x, y - 160);
+      ctx.shadowBlur = 40; ctx.shadowColor = color;
+      
+      ctx.fillStyle = '#f5f6fa'; ctx.beginPath();
+      ctx.moveTo(0, 20); ctx.lineTo(-60, 0); ctx.lineTo(-60, -80); ctx.lineTo(0, -60); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, 20); ctx.lineTo(60, 0); ctx.lineTo(60, -80); ctx.lineTo(0, -60); ctx.closePath(); ctx.fill(); ctx.stroke();
+      
+      ctx.fillStyle = color; ctx.fillRect(-4, -60, 8, 80);
+      ctx.translate(-x, -(y - 160));
+      
+      ctx.fillStyle = 'white'; ctx.font = '900 36px "Impact"'; ctx.textAlign = 'center';
+      ctx.shadowBlur = 10; ctx.shadowColor = color; ctx.lineWidth = 6; ctx.strokeStyle = 'black';
+      ctx.strokeText(text, x, y - 260); ctx.fillText(text, x, y - 260);
+    }
+    else if (action === 'discord') {
+      ctx.fillStyle = '#1e272e';
+      ctx.fillRect(x - 120, y - 200, 240, 160);
+      ctx.strokeStyle = '#5865F2'; ctx.lineWidth = 8;
+      ctx.strokeRect(x - 120, y - 200, 240, 160);
+      
+      ctx.fillStyle = '#5865F2';
+      ctx.fillRect(x - 100, y - 180, 200, 120);
+      
+      ctx.fillStyle = 'white'; ctx.font = 'bold 36px Inter'; ctx.textAlign = 'center';
+      ctx.fillText('DISCORD', x, y - 110);
+      
+      ctx.fillStyle = '#2f3640';
+      ctx.fillRect(x - 20, y - 40, 40, 40);
+      ctx.fillRect(x - 60, y, 120, 10);
+      
+      ctx.fillStyle = 'white'; ctx.font = '900 36px "Impact"'; ctx.textAlign = 'center';
+      ctx.shadowBlur = 10; ctx.shadowColor = color; ctx.lineWidth = 6; ctx.strokeStyle = 'black';
+      ctx.strokeText(text, x, y - 230); ctx.fillText(text, x, y - 230);
+    }
+    else {
+      // Default Portal Fallback
+      const portalWidth = 140; const portalHeight = 200; const thickness = 16;
+      const startX = x - portalWidth / 2;
+      ctx.shadowBlur = 20; ctx.shadowColor = color; ctx.fillStyle = color;
+      ctx.fillRect(startX, y - portalHeight, thickness, portalHeight);
+      ctx.fillRect(startX + portalWidth - thickness, y - portalHeight, thickness, portalHeight);
+      ctx.fillRect(startX, y - portalHeight, portalWidth, thickness);
+      
+      ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+      ctx.fillRect(startX + thickness, y - portalHeight + thickness, portalWidth - thickness * 2, portalHeight - thickness);
+      
+      const gradient = ctx.createLinearGradient(0, y - portalHeight, 0, y);
+      gradient.addColorStop(0, color); gradient.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gradient; ctx.globalAlpha = 0.4;
+      ctx.fillRect(startX + thickness, y - portalHeight + thickness, portalWidth - thickness * 2, portalHeight - thickness);
+      
+      ctx.globalAlpha = 1.0; ctx.fillStyle = 'white'; ctx.font = '900 36px "Impact"'; ctx.textAlign = 'center';
+      ctx.shadowBlur = 10; ctx.shadowColor = color; ctx.lineWidth = 6; ctx.strokeStyle = 'black';
+      ctx.strokeText(text, x, y - portalHeight - 40); ctx.fillText(text, x, y - portalHeight - 40);
+    }
+    
+    ctx.restore();
   }
 
   setLeaderboardData(data) {
@@ -327,6 +513,9 @@ export class LobbyEngine3D {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
     }
+    this.canvas.removeEventListener('mousedown', this.onMouseDownBound);
+    window.removeEventListener('mousemove', this.onMouseMoveBound);
+    window.removeEventListener('mouseup', this.onMouseUpBound);
   }
 
   animate() {
@@ -339,21 +528,27 @@ export class LobbyEngine3D {
     if (this.localPlayer) {
       // Very basic 3D movement logic. We override the 2D Player's update.
       const speed = 400 * deltaTime;
-      if (this.localPlayer.keys['a']) this.localPlayer.x -= speed;
-      if (this.localPlayer.keys['d']) this.localPlayer.x += speed;
-      if (this.localPlayer.keys['w']) this.localPlayer.z -= speed;
-      if (this.localPlayer.keys['s']) this.localPlayer.z += speed;
-      
-      // Face direction
-      if (this.localPlayer.keys['a']) this.localPlayer.facing = -1;
-      if (this.localPlayer.keys['d']) this.localPlayer.facing = 1;
-      
-      // Bound
-      if (this.localPlayer.z < -800) this.localPlayer.z = -800;
-      if (this.localPlayer.z > 800) this.localPlayer.z = 800;
-      
-      // Walk hop animation
-      if (this.localPlayer.keys['w'] || this.localPlayer.keys['a'] || this.localPlayer.keys['s'] || this.localPlayer.keys['d']) {
+      let moveX = 0;
+      let moveZ = 0;
+      if (this.localPlayer.keys['a']) moveX -= 1;
+      if (this.localPlayer.keys['d']) moveX += 1;
+      if (this.localPlayer.keys['w']) moveZ -= 1;
+      if (this.localPlayer.keys['s']) moveZ += 1;
+
+      if (moveX !== 0 || moveZ !== 0) {
+        const len = Math.hypot(moveX, moveZ);
+        moveX /= len;
+        moveZ /= len;
+
+        const rotatedX = moveX * Math.cos(this.cameraAngle) + moveZ * Math.sin(this.cameraAngle);
+        const rotatedZ = -moveX * Math.sin(this.cameraAngle) + moveZ * Math.cos(this.cameraAngle);
+
+        this.localPlayer.x += rotatedX * speed;
+        this.localPlayer.z += rotatedZ * speed;
+        
+        if (moveX < 0) this.localPlayer.facing = -1;
+        if (moveX > 0) this.localPlayer.facing = 1;
+        
         this.localPlayer.isWalkHopping = true;
         this.localPlayer.y = -Math.abs(Math.sin(Date.now() / 100) * 10);
       } else {
@@ -361,12 +556,27 @@ export class LobbyEngine3D {
         this.localPlayer.y = 0;
       }
       
+      // Bound
+      if (this.localPlayer.z < -800) this.localPlayer.z = -800;
+      if (this.localPlayer.z > 800) this.localPlayer.z = 800;
+      
       this.updatePlayerSpriteTexture(this.localSprite);
       
-      // Camera follow (Lower angle)
-      this.camera.position.x += (this.localPlayer.x - this.camera.position.x) * 5 * deltaTime;
-      this.camera.position.y += (180 - this.camera.position.y) * 5 * deltaTime;
-      this.camera.position.z += ((this.localPlayer.z || 0) + 400 - this.camera.position.z) * 5 * deltaTime;
+      // Camera follow (Orbit)
+      const targetX = this.localPlayer.x;
+      const targetY = 100;
+      const targetZ = this.localPlayer.z || 0;
+      
+      const distance = 400;
+      const idealCamX = targetX + Math.sin(this.cameraAngle) * Math.cos(this.cameraPitch) * distance;
+      const idealCamY = targetY + Math.sin(this.cameraPitch) * distance;
+      const idealCamZ = targetZ + Math.cos(this.cameraAngle) * Math.cos(this.cameraPitch) * distance;
+
+      this.camera.position.x += (idealCamX - this.camera.position.x) * 5 * deltaTime;
+      this.camera.position.y += (idealCamY - this.camera.position.y) * 5 * deltaTime;
+      this.camera.position.z += (idealCamZ - this.camera.position.z) * 5 * deltaTime;
+
+      this.camera.lookAt(targetX, targetY, targetZ);
       
       // Raycast or distance check for interactions
       if (this.localPlayer.keys['enter']) {
