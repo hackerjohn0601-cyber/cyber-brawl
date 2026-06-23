@@ -383,6 +383,22 @@ io.on('connection', (socket) => {
     socket.emit('onlinePlayersList', players);
   });
 
+  socket.on('getLeaderboard', async () => {
+    try {
+      const db = await getDB();
+      const users = Object.entries(db.users).map(([username, data]) => {
+        const progress = data.progress || {};
+        const trophies = progress.trophies || 0;
+        const charPlayTime = progress.charPlayTime || {};
+        const playTime = Object.values(charPlayTime).reduce((a, b) => a + b, 0);
+        return { username, trophies, playTime };
+      });
+      socket.emit('leaderboardData', users);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
   socket.on('adminGrantCurrency', async (data) => {
     console.log('Received adminGrantCurrency:', data, 'isAdmin:', socket.isAdmin);
     const { targetUsername, type, amount } = data;

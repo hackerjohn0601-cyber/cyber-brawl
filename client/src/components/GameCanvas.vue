@@ -113,6 +113,7 @@
 
     <!-- FRIENDS + CLAN BUTTON -->
     <div v-if="gameState !== 'AUTH'" class="social-buttons">
+      <button v-if="gameState === 'LOBBY'" class="social-btn" @click="fetchLeaderboard" title="排行榜">🏆</button>
       <button v-if="gameState === 'LOBBY'" class="social-btn" @click="showSpectateModal = true" title="觀戰大廳">📺</button>
       <button v-if="gameState === 'LOBBY'" class="social-btn" @click="toggleFriends" title="好友">👥</button>
       <button v-if="gameState === 'LOBBY'" class="social-btn" @click="toggleClan" title="戰隊">⚔️</button>
@@ -133,6 +134,33 @@
           </div>
           <div v-if="!Object.values(spectatorSlots).some(d => d.host)" style="color: #636e72; font-size: 14px; text-align: center; padding: 10px;">
             目前沒有正在進行的對戰。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEADERBOARD MODAL -->
+    <div v-if="showLeaderboardModal && gameState !== 'AUTH'" class="settings-overlay" @click.self="showLeaderboardModal = false">
+      <div class="settings-panel" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
+        <div class="settings-header">
+          <h2>🏆 全服排行榜</h2>
+          <button class="settings-close" @click="showLeaderboardModal = false">✕</button>
+        </div>
+        
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+          <button class="auth-btn" style="flex: 1; padding: 10px;" :style="{ background: leaderboardTab === 'trophies' ? '#fbc531' : '#2f3640', color: leaderboardTab === 'trophies' ? 'black' : 'white' }" @click="leaderboardTab = 'trophies'">🏆 獎杯榜</button>
+          <button class="auth-btn" style="flex: 1; padding: 10px;" :style="{ background: leaderboardTab === 'time' ? '#4cd137' : '#2f3640', color: leaderboardTab === 'time' ? 'black' : 'white' }" @click="leaderboardTab = 'time'">⏱️ 時間榜</button>
+        </div>
+
+        <div class="spectate-list">
+          <div v-for="(user, index) in sortedLeaderboard" :key="user.username" class="friend-row" style="padding: 10px; font-size: 14px; background: rgba(0,0,0,0.3); border-radius: 8px; margin-bottom: 5px;">
+            <div style="width: 30px; font-weight: bold; color: #fbc531;">#{{ index + 1 }}</div>
+            <div style="flex: 1; font-weight: bold; color: white;">{{ user.username }}</div>
+            <div v-if="leaderboardTab === 'trophies'" style="color: #fbc531;">🏆 {{ user.trophies }}</div>
+            <div v-if="leaderboardTab === 'time'" style="color: #4cd137;">⏱️ {{ Math.floor(user.playTime / 60) }}h {{ user.playTime % 60 }}m</div>
+          </div>
+          <div v-if="!sortedLeaderboard.length" style="color: #636e72; text-align: center; padding: 10px;">
+            載入中或沒有資料。
           </div>
         </div>
       </div>
@@ -1000,6 +1028,26 @@ const sendChatMessage = () => {
   }
   isChatFocused.value = false;
   if (chatInputRef.value) chatInputRef.value.blur();
+};
+
+// Leaderboard State
+const showLeaderboardModal = ref(false);
+const leaderboardData = ref([]);
+const leaderboardTab = ref('trophies'); // 'trophies' or 'time'
+
+const sortedLeaderboard = computed(() => {
+  if (leaderboardTab.value === 'trophies') {
+    return [...leaderboardData.value].sort((a, b) => b.trophies - a.trophies).slice(0, 50);
+  } else {
+    return [...leaderboardData.value].sort((a, b) => b.playTime - a.playTime).slice(0, 50);
+  }
+});
+
+const fetchLeaderboard = () => {
+  if (networkManager && networkManager.socket) {
+    networkManager.socket.emit('getLeaderboard');
+  }
+  showLeaderboardModal.value = true;
 };
 
 // Admin State
@@ -2154,6 +2202,10 @@ const setupNetworking = () => {
   networkManager.socket.on('banned', () => {
     alert('您已被管理員封鎖！(You have been banned by an administrator.)');
     window.location.reload(); // Force reload to kick them out
+  });
+
+  networkManager.socket.on('leaderboardData', (data) => {
+    leaderboardData.value = data;
   });
 };
 
