@@ -1885,6 +1885,17 @@ const initLobby = () => {
   audioManager.resume();
   
   if (!lobbyCanvas.value) return;
+  
+  // Dispose old engine if it exists
+  if (lobbyEngine) {
+    if (lobbyEngine.dispose) {
+      lobbyEngine.dispose();
+    } else {
+      lobbyEngine.stop();
+    }
+    lobbyEngine = null;
+  }
+  
   lobbyEngine = new LobbyEngine3D(lobbyCanvas.value);
   if (leaderboardData.value && leaderboardData.value.length > 0) {
     lobbyEngine.setLeaderboardData(leaderboardData.value);

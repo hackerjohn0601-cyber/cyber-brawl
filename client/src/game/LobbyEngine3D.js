@@ -11,10 +11,17 @@ export class LobbyEngine3D {
     this.leaderboardMesh = null;
     
     // Set up WebGL Renderer
+    // Dispose existing WebGL context if canvas was used before
+    const existingContext = this.canvas.getContext('webgl2') || this.canvas.getContext('webgl');
+    if (existingContext && existingContext.getExtension) {
+      const loseCtx = existingContext.getExtension('WEBGL_lose_context');
+      if (loseCtx) loseCtx.loseContext();
+    }
+    
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, alpha: false });
-    this.renderer.setSize(this.canvas.width, this.canvas.height);
-    this.renderer.setPixelRatio(window.devicePixelRatio || 1);
+    this.renderer.setSize(1024, 576, false); // Use fixed size, don't update canvas style
     this.renderer.setClearColor(0x87CEEB); // Bright sky blue background
+    console.log('[LobbyEngine3D] Renderer created, size:', 1024, 576);
     
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x87CEEB); // Bright sky blue
@@ -562,6 +569,20 @@ export class LobbyEngine3D {
     this.canvas.removeEventListener('mousedown', this.onMouseDownBound);
     window.removeEventListener('mousemove', this.onMouseMoveBound);
     window.removeEventListener('mouseup', this.onMouseUpBound);
+  }
+
+  dispose() {
+    this.stop();
+    // Dispose all textures and materials
+    this.scene.traverse((obj) => {
+      if (obj.material) {
+        if (obj.material.map) obj.material.map.dispose();
+        obj.material.dispose();
+      }
+      if (obj.geometry) obj.geometry.dispose();
+    });
+    this.renderer.dispose();
+    console.log('[LobbyEngine3D] Disposed');
   }
 
   animate() {
