@@ -26,6 +26,11 @@ export class NetworkManager {
     this.onLobbyState = null;
     this.onRoomList = null;
     
+    // Spectator callbacks
+    this.onSpectatorJoined = null;
+    this.onSpectatorAdded = null;
+    this.onSpectatorLeft = null;
+    
     // Clan callbacks
     this.onClanInviteReceived = null;
     
@@ -95,8 +100,23 @@ export class NetworkManager {
       if (this.onLobbyState) this.onLobbyState(data);
     });
 
-    this.socket.on('arcadeSlotsUpdate', (data) => {
-      if (this.onArcadeSlotsUpdate) this.onArcadeSlotsUpdate(data);
+    this.socket.on('arcadeSlotsUpdate', (slots, details) => {
+      if (this.onArcadeSlotsUpdate) this.onArcadeSlotsUpdate(slots, details);
+    });
+
+    this.socket.on('spectatorJoined', (code) => {
+      this.isHost = false;
+      this.roomId = code;
+      this.isSpectator = true;
+      if (this.onSpectatorJoined) this.onSpectatorJoined(code);
+    });
+
+    this.socket.on('spectatorAdded', (socketId) => {
+      if (this.onSpectatorAdded) this.onSpectatorAdded(socketId);
+    });
+
+    this.socket.on('spectatorLeft', (socketId) => {
+      if (this.onSpectatorLeft) this.onSpectatorLeft(socketId);
     });
 
     this.socket.on('globalBroadcast', (message) => {
@@ -122,6 +142,19 @@ export class NetworkManager {
 
   joinSlot(slotId) {
     if (this.socket) this.socket.emit('joinSlot', slotId);
+  }
+
+  joinSlotAsSpectator(slotId) {
+    if (this.socket) this.socket.emit('joinSlot', slotId, true);
+  }
+
+  leaveSlot() {
+    if (this.socket) {
+      this.socket.emit('leaveSlot');
+      this.roomId = null;
+      this.isHost = false;
+      this.isSpectator = false;
+    }
   }
 
   sendLobbyAction(data) {

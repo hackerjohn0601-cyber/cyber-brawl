@@ -172,6 +172,12 @@ function generateRoomCode() {
 
 let lobbyPlayers = {};
 let arcadeSlots = { 'Slot1': 0, 'Slot2': 0, 'Slot3': 0, 'Slot4': 0 };
+let slotDetails = { 
+  'Slot1': { host: null, guest: null, spectators: [] },
+  'Slot2': { host: null, guest: null, spectators: [] },
+  'Slot3': { host: null, guest: null, spectators: [] },
+  'Slot4': { host: null, guest: null, spectators: [] }
+};
 
 setInterval(() => {
   io.to('global_lobby').emit('lobbyState', lobbyPlayers);
@@ -182,7 +188,8 @@ setInterval(() => {
     const room = io.sockets.adapter.rooms.get(slotId);
     arcadeSlots[slotId] = room ? room.size : 0;
   }
-  io.to('global_lobby').emit('arcadeSlotsUpdate', arcadeSlots);
+  // Send both arcadeSlots and slotDetails so lobby can show spectator button
+  io.to('global_lobby').emit('arcadeSlotsUpdate', arcadeSlots, slotDetails);
 }, 1000 / 30);
 
 io.on('connection', (socket) => {
@@ -191,7 +198,7 @@ io.on('connection', (socket) => {
   socket.on('joinLobby', (playerData) => {
     socket.join('global_lobby');
     lobbyPlayers[socket.id] = playerData;
-    socket.emit('arcadeSlotsUpdate', arcadeSlots);
+    socket.emit('arcadeSlotsUpdate', arcadeSlots, slotDetails);
   });
 
   socket.on('lobbyUpdate', (data) => {
@@ -200,28 +207,46 @@ io.on('connection', (socket) => {
     }
   });
   
-  socket.on('joinSlot', (slotId) => {
+  socket.on('joinSlot', (slotId, asSpectator = false) => {
     const room = io.sockets.adapter.rooms.get(slotId);
+    const details = slotDetails[slotId];
     
-    if (!room || room.size === 0) {
+    if (!details) return; // invalid slot
+
+    if (asSpectator || (details.host && details.guest)) {
+      if (!details.host) {
+        socket.emit('roomError', 'Cannot spectate an empty room.');
+        return;
+      }
+      socket.join(slotId);
+      socket.roomId = slotId;
+      socket.isHost = false;
+      socket.isSpectator = true;
+      details.spectators.push(socket.id);
+      socket.leave('global_lobby');
+      delete lobbyPlayers[socket.id];
+      socket.emit('spectatorJoined', slotId);
+      socket.to(slotId).emit('spectatorAdded', socket.id);
+      console.log(`User ${socket.id} started spectating slot: ${slotId}`);
+    } else if (!details.host) {
       socket.join(slotId);
       socket.roomId = slotId;
       socket.isHost = true;
+      details.host = socket.id;
       socket.leave('global_lobby');
       delete lobbyPlayers[socket.id];
       socket.emit('roomCreated', slotId);
       console.log(`User ${socket.id} hosted slot: ${slotId}`);
-    } else if (room.size === 1) {
+    } else if (!details.guest) {
       socket.join(slotId);
       socket.roomId = slotId;
       socket.isHost = false;
+      details.guest = socket.id;
       socket.leave('global_lobby');
       delete lobbyPlayers[socket.id];
       socket.emit('roomJoined', slotId);
       socket.to(slotId).emit('guestJoined', socket.id);
       console.log(`User ${socket.id} joined slot: ${slotId}`);
-    } else {
-      socket.emit('roomError', 'Slot is full.');
     }
   });
 
@@ -281,12 +306,46 @@ io.on('connection', (socket) => {
     io.emit('globalBroadcast', message);
   });
 
+  socket.on('leaveSlot', () => {
+    if (socket.roomId) {
+      const details = slotDetails[socket.roomId];
+      if (details) {
+        if (socket.isSpectator) {
+          details.spectators = details.spectators.filter(id => id !== socket.id);
+          socket.to(socket.roomId).emit('spectatorLeft', socket.id);
+        } else {
+          if (details.host === socket.id) details.host = null;
+          if (details.guest === socket.id) details.guest = null;
+          socket.to(socket.roomId).emit('opponentLeft');
+          // If room is empty, clear it out
+          if (!details.host && !details.guest && details.spectators.length === 0) {
+            slotDetails[socket.roomId] = { host: null, guest: null, spectators: [] };
+          }
+        }
+      }
+      socket.leave(socket.roomId);
+      socket.roomId = null;
+      socket.isHost = false;
+      socket.isSpectator = false;
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
     delete lobbyPlayers[socket.id];
     
     if (socket.roomId) {
-      socket.to(socket.roomId).emit('opponentLeft');
+      const details = slotDetails[socket.roomId];
+      if (details) {
+        if (socket.isSpectator) {
+          details.spectators = details.spectators.filter(id => id !== socket.id);
+          socket.to(socket.roomId).emit('spectatorLeft', socket.id);
+        } else {
+          if (details.host === socket.id) details.host = null;
+          if (details.guest === socket.id) details.guest = null;
+          socket.to(socket.roomId).emit('opponentLeft');
+        }
+      }
     }
   });
 

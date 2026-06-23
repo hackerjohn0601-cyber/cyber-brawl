@@ -21,13 +21,13 @@
           "Sniper": 5,
           "Mage": 5
         },
-        "cpuMatches": 0,
-        "tokens": 2162,
+        "cpuMatches": 1,
+        "tokens": 2193,
         "goldCoins": 63,
-        "trophies": 3193,
+        "trophies": 3262,
         "charPlayTime": {
-          "Sniper": 103,
-          "Striker": 61,
+          "Sniper": 104,
+          "Striker": 63,
           "Brawler": 39,
           "Assassin": 39,
           "Tank": 44,
@@ -41,7 +41,7 @@
         },
         "quests": {
           "parries": 0,
-          "cpuDefeated": 309,
+          "cpuDefeated": 312,
           "ultimatesHit": 0,
           "skillsUsed": 0,
           "totalWins": 0,
@@ -81,7 +81,7 @@
             "desc": "每日: 成功格擋 30 次",
             "target": 30,
             "type": "parries",
-            "progress": 21,
+            "progress": 25,
             "done": false
           },
           {

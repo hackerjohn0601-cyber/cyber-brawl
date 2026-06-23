@@ -113,9 +113,29 @@
 
     <!-- FRIENDS + CLAN BUTTON -->
     <div v-if="gameState !== 'AUTH'" class="social-buttons">
+      <button v-if="gameState === 'LOBBY'" class="social-btn" @click="showSpectateModal = true" title="觀戰大廳">📺</button>
       <button v-if="gameState === 'LOBBY'" class="social-btn" @click="toggleFriends" title="好友">👥</button>
       <button v-if="gameState === 'LOBBY'" class="social-btn" @click="toggleClan" title="戰隊">⚔️</button>
       <button class="social-btn" @click="showSettings = !showSettings" title="設定">⚙️</button>
+    </div>
+
+    <!-- SPECTATE MODAL -->
+    <div v-if="showSpectateModal && gameState !== 'AUTH'" class="settings-overlay" @click.self="showSpectateModal = false">
+      <div class="settings-panel" style="max-width: 400px;">
+        <div class="settings-header">
+          <h2>📺 觀戰大廳</h2>
+          <button class="settings-close" @click="showSpectateModal = false">✕</button>
+        </div>
+        <div class="spectate-list">
+          <div v-for="(details, slotId) in spectatorSlots" :key="slotId" class="friend-row" v-show="details.host">
+            <span>{{ slotId }} (玩家: {{ details.host ? 1 : 0 }} + {{ details.guest ? 1 : 0 }}) 👁️{{ details.spectators.length }}</span>
+            <button class="friend-add-btn" @click="joinSpectate(slotId)">觀戰</button>
+          </div>
+          <div v-if="!Object.values(spectatorSlots).some(d => d.host)" style="color: #636e72; font-size: 14px; text-align: center; padding: 10px;">
+            目前沒有正在進行的對戰。
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- CLAN PANEL -->
@@ -306,7 +326,7 @@
 
     <!-- GACHA MODAL -->
     <div v-if="showGachaModal" class="modal-overlay" @click.self="showGachaModal = false; gachaResult = null">
-      <div class="gacha-machine-wrapper">
+      <div class="gacha-machine-wrapper" v-if="!isSpectator">
         <div class="gacha-machine" :class="{ 'is-rolling': isRollingGacha }">
           <!-- Glass dome with capsules -->
           <div class="gacha-glass">
@@ -574,7 +594,17 @@
           <h2 style="color: #1e90ff" v-else-if="isVsCPU">CPU PLAYER</h2>
           <h2 style="color: #1e90ff" v-else>PLAYER 2 (Arrows)</h2>
           
-          <div v-if="isOnline && !hasOpponent" style="display: flex; flex-direction: column; height: 100%; justify-content: center; align-items: center; text-align: center;">
+          <div class="room-info" v-if="onlineState.roomCode">
+            <h3>房間代碼: {{ onlineState.roomCode }}</h3>
+            <p v-if="!hasOpponent && !isSpectator">等待對手加入... 或將代碼分享給好友</p>
+            <p v-if="isSpectator">目前為觀戰模式 👁️</p>
+            
+            <div v-if="onlineState.isHost && !hasOpponent" style="margin-top: 15px;">
+              <button class="settings-btn" @click="startOnlineTraining">🤖 進行公開訓練 (打電腦)</button>
+            </div>
+          </div>
+          
+          <div v-if="isOnline && !hasOpponent && !isSpectator" style="display: flex; flex-direction: column; height: 100%; justify-content: center; align-items: center; text-align: center;">
             <h3 style="margin-bottom: 2rem; color: #fffa65; animation: pulse 1s infinite;">Waiting for Challenger...</h3>
             <div class="bottom-actions" style="margin-top: 0;">
               <button class="back-btn" @click="resumeLobby">BACK TO LOBBY</button>
@@ -614,12 +644,25 @@
 
       <div v-if="!isVsCPU" class="bottom-actions">
         <button class="back-btn" @click="resumeLobby">BACK</button>
-        <button v-if="!isOnline" class="start-btn" :disabled="!p1Choice || (!p2Choice && !isVsCPU)" @click="startGame">
-          FIGHT!
-        </button>
-        <button v-else class="start-btn" @click="toggleReady" :style="{ backgroundColor: localReady ? '#4cd137' : '#fff' }">
-          {{ localReady ? 'WAITING...' : 'READY' }}
-        </button>
+        <div class="controls-info" style="margin-top: 15px;" v-if="!isSpectator">
+          <p v-if="isOnline">{{ onlineState.isHost ? '你是 Player 1 (紅方)' : '你是 Player 2 (藍方)' }}</p>
+          <p v-if="isOnline && hasOpponent && (!localReady || !remoteReady)">請選擇角色後點擊準備</p>
+          <div style="display: flex; gap: 15px; justify-content: center; margin-top: 10px;">
+            <button v-if="isOnline && hasOpponent" 
+                    class="auth-btn" 
+                    @click="toggleReady"
+                    :class="{ 'ready-state': localReady }"
+            >
+              {{ localReady ? '取消準備' : '準備完成' }}
+            </button>
+            <button class="auth-btn" @click="leaveLobby" style="background: #e74c3c; border-color: #c0392b;">離開房間</button>
+          </div>
+        </div>
+        <div class="controls-info" style="margin-top: 15px;" v-else>
+          <div style="display: flex; gap: 15px; justify-content: center; margin-top: 10px;">
+            <button class="auth-btn" @click="leaveLobby" style="background: #e74c3c; border-color: #c0392b;">🚪 離開觀戰</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -641,7 +684,7 @@
               <span class="block-pip" :class="{'filled': p1BlockCount >= 2}"></span>
               <span class="block-pip" :class="{'filled': p1BlockCount >= 3}"></span>
             </div>
-            <div v-if="p1UltimateReady" class="ultimate-prompt">ULTIMATE READY! [E]</div>
+            <div v-if="p1UltimateReady && !isSpectator" class="ultimate-prompt">ULTIMATE READY! [E]</div>
           </div>
           <!-- Cooldown UI with Numericals -->
           <div class="cooldown-hud">
@@ -666,7 +709,7 @@
           </div>
           <!-- Block Counter / Ultimate UI -->
           <div class="ultimate-hud" style="justify-content: flex-end;">
-            <div v-if="p2UltimateReady" class="ultimate-prompt">ULTIMATE READY! [P]</div>
+            <div v-if="p2UltimateReady && !isSpectator" class="ultimate-prompt">ULTIMATE READY! [P]</div>
             <div class="blocks">
               <span class="block-pip" :class="{'filled': p2BlockCount >= 1}"></span>
               <span class="block-pip" :class="{'filled': p2BlockCount >= 2}"></span>
@@ -896,6 +939,9 @@ import { SKINS_DB } from '../game/SkinsDB';
 const gameState = ref('AUTH');
 const isVsCPU = ref(false);
 const isOnline = ref(true); // Default to online for lobby
+const isSpectator = ref(false);
+const spectatorSlots = ref({});
+const showSpectateModal = ref(false);
 
 const p1Choice = ref('Striker');
 const p2Choice = ref('Assassin');
@@ -1914,8 +1960,36 @@ const setupNetworking = () => {
     if (lobbyEngine) lobbyEngine.applyLobbyState(state, networkManager.socket.id);
   };
   
-  networkManager.onArcadeSlotsUpdate = (data) => {
-    if (lobbyEngine) lobbyEngine.setArcadeSlots(data);
+  networkManager.onArcadeSlotsUpdate = (slots, details) => {
+    if (lobbyEngine) lobbyEngine.setArcadeSlots(slots);
+    if (details) spectatorSlots.value = details;
+  };
+
+  networkManager.onSpectatorJoined = (code) => {
+    onlineState.roomCode = code;
+    onlineState.isHost = false;
+    isSpectator.value = true;
+    hasOpponent.value = true; // Pretend we have opponent so UI draws
+    gameState.value = 'CHAR_SELECT';
+    if (lobbyEngine) lobbyEngine.stop();
+  };
+  
+  networkManager.onSpectatorAdded = (socketId) => {
+    // Host handles syncing room state to the newly joined spectator
+    if (networkManager.isHost) {
+      networkManager.sendLobbyAction({
+        type: 'syncRoomState',
+        gameState: gameState.value,
+        p1Choice: p1Choice.value,
+        p2Choice: p2Choice.value,
+        remoteReady: remoteReady.value,
+        localReady: localReady.value
+      });
+    }
+  };
+
+  networkManager.onSpectatorLeft = (socketId) => {
+    // Optional: show a small toast notification
   };
 
   networkManager.onRoomCreated = (code) => {
@@ -1982,7 +2056,16 @@ const setupNetworking = () => {
   };
 
   networkManager.onLobbyAction = (data) => {
-    if (data.type === 'setInfo') {
+    if (data.type === 'syncRoomState') {
+      gameState.value = data.gameState;
+      p1Choice.value = data.p1Choice;
+      p2Choice.value = data.p2Choice;
+      localReady.value = data.localReady;
+      remoteReady.value = data.remoteReady;
+      if (data.gameState === 'FIGHT' && !engine) {
+        startGame(true); // pass true for spectator join mid-game
+      }
+    } else if (data.type === 'setInfo') {
       opponentUsername.value = data.username || 'Opponent';
     } else if (data.type === 'selectChar') {
       p2Choice.value = data.char;
@@ -1992,6 +2075,8 @@ const setupNetworking = () => {
     } else if (data.type === 'startGame') {
       startGame();
     } else if (data.type === 'rematchReady') {
+      remoteReady.value = false;
+      localReady.value = false;
       remoteRematchReady.value = data.isReady;
       checkBothRematchReady();
     } else if (data.type === 'startRematch') {
@@ -2073,7 +2158,8 @@ const setupNetworking = () => {
 };
 
 const selectChar = (playerNum, charName) => {
-  if (isOnline.value) {
+  if (isSpectator.value) return;
+  if (playerNum === 1 && (onlineState.isHost || !isOnline.value)) {
     if (localReady.value) return; // Cannot change if ready
     p1Choice.value = charName;
     networkManager.sendLobbyAction({ type: 'selectChar', char: charName });
@@ -2114,10 +2200,11 @@ const checkBothRematchReady = () => {
 };
 
 const leaveLobby = () => {
-  networkManager.disconnect();
+  networkManager.leaveSlot();
   onlineState.roomCode = null;
   onlineState.error = null;
   gameState.value = 'LOBBY';
+  isSpectator.value = false;
   // Reconnect to lobby
   setupNetworking();
   setTimeout(() => {
@@ -2182,6 +2269,13 @@ const quickTraining = () => {
   if (lobbyEngine) lobbyEngine.stop();
 };
 
+const startOnlineTraining = () => {
+  isVsCPU.value = true;
+  // keep isOnline true, so gameState is emitted
+  startGame();
+  networkManager.sendLobbyAction({ type: 'startGame' }); // Tell spectators the game started
+};
+
 const quickTutorial = () => {
   gameState.value = 'TUTORIAL';
   if (lobbyEngine) lobbyEngine.stop();
@@ -2229,7 +2323,7 @@ const initGame = () => {
   p1 = new Player(100, 100, getEquippedSkinColor(p1Choice.value), p1Controls, 1, p1Choice.value, false, charLevels.value[p1Choice.value] || 1, playerEquipment.value, equippedSkins.value[p1Choice.value] || 'default', trophies.value);
   p1.engine = engine;
   p1.isOnline = isOnline.value;
-  p1.isLocalPlayer = isOnline.value ? networkManager.isHost : true;
+  p1.isLocalPlayer = isSpectator.value ? false : (isOnline.value ? networkManager.isHost : true);
 
   // Player 2 (Blue)
   const p2Controls = isOnline.value 
@@ -2239,12 +2333,16 @@ const initGame = () => {
   p2 = new Player(800, 100, getEquippedSkinColor(p2Choice.value), p2Controls, -1, p2Choice.value, isVsCPU.value, isOnline.value ? 1 : (charLevels.value[p2Choice.value] || 1), undefined, isOnline.value ? 'default' : (equippedSkins.value[p2Choice.value] || 'default'), isOnline.value ? 0 : 0); // P2 CPU doesn't use burst yet
   p2.engine = engine;
   p2.isOnline = isOnline.value;
-  p2.isLocalPlayer = isOnline.value ? !networkManager.isHost : !isVsCPU.value;
+  p2.isLocalPlayer = isSpectator.value ? false : (isOnline.value ? !networkManager.isHost : !isVsCPU.value);
 
   if (isOnline.value) {
     if (networkManager.isHost) {
       p1.username = loggedInUsername.value;
       p2.username = opponentUsername.value;
+    } else if (isSpectator.value) {
+      // Spectators see the original host/guest names (these should be synced via lobbyAction setInfo, but for now fallback)
+      p1.username = 'Host';
+      p2.username = opponentUsername.value || 'Guest';
     } else {
       p1.username = opponentUsername.value;
       p2.username = loggedInUsername.value;
