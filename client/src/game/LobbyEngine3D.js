@@ -14,6 +14,8 @@ export class LobbyEngine3D {
     this.leaderboardData = [];
     this.leaderboardTexture = null;
     this.leaderboardMesh = null;
+    this.portals = []; // Compatibility with GameCanvas.vue
+    this.currentFloor = 0;
     
     // Set up WebGL Renderer
     try {
@@ -451,41 +453,21 @@ export class LobbyEngine3D {
 
   setLocalPlayer(player) {
     this.localPlayer = player;
-    this.localPlayer.z = 0; // Initialize Z if not present
+    this.localPlayer.z = 0;
     this.localSprite = this.createPlayerSprite(this.localPlayer);
     this.scene.add(this.localSprite);
   }
 
-  updateRemotePlayers(playersList) {
-    // Create new players
-    for (const data of playersList) {
-      if (data.socketId === 'local') continue; // We are local
-      
-      let rp = this.remotePlayers.get(data.socketId);
-      if (!rp) {
-        rp = new Player(data.x, data.y, data.color, {}, data.facing, data.characterType, false, 1, undefined, data.skinId);
-        rp.z = data.z || 0; // Read Z
-        rp.username = data.username;
-        rp.trophies = data.trophies;
-        this.remotePlayers.set(data.socketId, rp);
-        
-        const sprite = this.createPlayerSprite(rp);
-        this.playerSprites.set(data.socketId, sprite);
-        this.scene.add(sprite);
-      } else {
-        // Smooth interpolation could be done here, but for now teleport
-        rp.x = data.x;
-        rp.y = data.y;
-        rp.z = data.z || 0;
-        rp.facing = data.facing;
-        rp.color = data.color;
-        rp.skinId = data.skinId;
-        rp.characterType = data.characterType;
-      }
-    }
+  setArcadeSlots(slots) {
+    // Store arcade slot data for compatibility
+    this.arcadeSlots = slots;
+  }
+
+  applyLobbyState(lobbyPlayers, currentSocketId) {
+    // lobbyPlayers is an object: { socketId: { x, y, z, facing, color, characterType, ... } }
+    const currentIds = new Set(Object.keys(lobbyPlayers));
     
     // Remove disconnected players
-    const currentIds = new Set(playersList.map(p => p.socketId));
     for (const [socketId, rp] of this.remotePlayers.entries()) {
       if (!currentIds.has(socketId)) {
         this.remotePlayers.delete(socketId);
@@ -498,7 +480,40 @@ export class LobbyEngine3D {
         }
       }
     }
+
+    // Update or add remote players
+    for (const [id, data] of Object.entries(lobbyPlayers)) {
+      if (id === currentSocketId) continue; // Skip local player
+      
+      let rp = this.remotePlayers.get(id);
+      if (!rp) {
+        // Create new remote player
+        rp = new Player(data.x, data.y, data.color, {}, data.facing, data.characterType, true, 1, undefined, data.skinId);
+        rp.z = data.z || 0;
+        rp.username = data.username;
+        rp.trophies = data.trophies || 0;
+        this.remotePlayers.set(id, rp);
+        
+        const sprite = this.createPlayerSprite(rp);
+        this.playerSprites.set(id, sprite);
+        this.scene.add(sprite);
+      } else {
+        // Update existing remote player
+        rp.x = data.x;
+        rp.y = data.y;
+        rp.z = data.z || 0;
+        rp.facing = data.facing;
+        rp.color = data.color;
+        rp.skinId = data.skinId;
+        rp.username = data.username;
+        rp.trophies = data.trophies || 0;
+        if (rp.characterType !== data.characterType) {
+          rp.characterType = data.characterType;
+        }
+      }
+    }
   }
+
 
   createPlayerSprite(player) {
     // Hidden canvas for 2D rendering
