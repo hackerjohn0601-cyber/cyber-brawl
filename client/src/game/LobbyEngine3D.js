@@ -69,49 +69,44 @@ export class LobbyEngine3D {
     // Animation frame
     this.animationId = null;
     this.lastTime = performance.now();
+    this.walkTime = 0; // For camera bob
 
-    // Camera Controls
+    // Camera Controls (Pointer Lock FPS)
     this.cameraAngle = 0; // Yaw
-    this.cameraPitch = 0.3; // Pitch
-    this.isDragging = false;
-    this.previousMousePosition = { x: 0, y: 0 };
+    this.cameraPitch = 0; // Pitch (0 = looking straight ahead)
+    this.isPointerLocked = false;
 
-    this.onMouseDownBound = this.onMouseDown.bind(this);
-    this.onMouseMoveBound = this.onMouseMove.bind(this);
-    this.onMouseUpBound = this.onMouseUp.bind(this);
+    this.onCanvasClickBound = this.onCanvasClick.bind(this);
+    this.onPointerMoveBound = this.onPointerMove.bind(this);
+    this.onPointerLockChangeBound = this.onPointerLockChange.bind(this);
 
-    this.canvas.addEventListener('mousedown', this.onMouseDownBound);
-    window.addEventListener('mousemove', this.onMouseMoveBound);
-    window.addEventListener('mouseup', this.onMouseUpBound);
+    this.canvas.addEventListener('click', this.onCanvasClickBound);
+    document.addEventListener('mousemove', this.onPointerMoveBound);
+    document.addEventListener('pointerlockchange', this.onPointerLockChangeBound);
   }
 
-  onMouseDown(e) {
-    if (e.button === 0) {
-      this.isDragging = true;
-      this.previousMousePosition = { x: e.clientX, y: e.clientY };
+  onCanvasClick() {
+    // Click to lock pointer (FPS mode)
+    if (!this.isPointerLocked) {
+      this.canvas.requestPointerLock();
     }
   }
 
-  onMouseMove(e) {
-    if (this.isDragging) {
-      const deltaX = e.clientX - this.previousMousePosition.x;
-      const deltaY = e.clientY - this.previousMousePosition.y;
-
-      this.cameraAngle -= deltaX * 0.01;
-      this.cameraPitch += deltaY * 0.01;
-
-      // Clamp pitch
-      if (this.cameraPitch < 0.1) this.cameraPitch = 0.1;
-      if (this.cameraPitch > Math.PI / 2 - 0.1) this.cameraPitch = Math.PI / 2 - 0.1;
-
-      this.previousMousePosition = { x: e.clientX, y: e.clientY };
-    }
+  onPointerLockChange() {
+    this.isPointerLocked = (document.pointerLockElement === this.canvas);
   }
 
-  onMouseUp(e) {
-    if (e.button === 0) {
-      this.isDragging = false;
-    }
+  onPointerMove(e) {
+    if (!this.isPointerLocked) return;
+
+    const sensitivity = 0.003;
+    this.cameraAngle -= e.movementX * sensitivity;
+    this.cameraPitch -= e.movementY * sensitivity;
+
+    // Clamp pitch so you can't look behind yourself
+    const maxPitch = Math.PI / 2 - 0.05;
+    if (this.cameraPitch > maxPitch) this.cameraPitch = maxPitch;
+    if (this.cameraPitch < -maxPitch) this.cameraPitch = -maxPitch;
   }
 
   buildEnvironment() {
@@ -565,10 +560,23 @@ export class LobbyEngine3D {
     texture.needsUpdate = true;
     
     // Position the 3D sprite
-    // X and Z are standard
-    // Y is up in 3D, our player.y is from top-left in 2D. 
-    // We'll place the sprite at y=100 (half its height)
-    sprite.position.set(player.x, 100, player.z || 0);
+    // Track previous position to detect movement
+    const prevX = sprite.userData.prevX || player.x;
+    const prevZ = sprite.userData.prevZ || (player.z || 0);
+    const dx = player.x - prevX;
+    const dz = (player.z || 0) - prevZ;
+    const isWalking = Math.abs(dx) > 0.5 || Math.abs(dz) > 0.5;
+    
+    sprite.userData.prevX = player.x;
+    sprite.userData.prevZ = player.z || 0;
+    
+    // Bob up and down when walking
+    let spriteY = 100;
+    if (isWalking) {
+      spriteY += Math.abs(Math.sin(Date.now() / 100)) * 15;
+    }
+    
+    sprite.position.set(player.x, spriteY, player.z || 0);
   }
 
   start() {
@@ -589,9 +597,13 @@ export class LobbyEngine3D {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
     }
-    this.canvas.removeEventListener('mousedown', this.onMouseDownBound);
-    window.removeEventListener('mousemove', this.onMouseMoveBound);
-    window.removeEventListener('mouseup', this.onMouseUpBound);
+    // Exit pointer lock
+    if (document.pointerLockElement === this.canvas) {
+      document.exitPointerLock();
+    }
+    this.canvas.removeEventListener('click', this.onCanvasClickBound);
+    document.removeEventListener('mousemove', this.onPointerMoveBound);
+    document.removeEventListener('pointerlockchange', this.onPointerLockChangeBound);
   }
 
   dispose() {
@@ -616,8 +628,11 @@ export class LobbyEngine3D {
     this.lastTime = now;
 
     if (this.localPlayer) {
-      // Very basic 3D movement logic. We override the 2D Player's update.
-      const speed = 400 * deltaTime;
+      // Sprint: Shift = 2x speed
+      const isSprinting = this.localPlayer.keys['shift'];
+      const baseSpeed = 400;
+      const speed = (isSprinting ? baseSpeed * 2 : baseSpeed) * deltaTime;
+      
       let moveX = 0;
       let moveZ = 0;
       if (this.localPlayer.keys['a']) moveX -= 1;
@@ -625,7 +640,9 @@ export class LobbyEngine3D {
       if (this.localPlayer.keys['w']) moveZ -= 1;
       if (this.localPlayer.keys['s']) moveZ += 1;
 
-      if (moveX !== 0 || moveZ !== 0) {
+      const isMoving = moveX !== 0 || moveZ !== 0;
+
+      if (isMoving) {
         const len = Math.hypot(moveX, moveZ);
         moveX /= len;
         moveZ /= len;
@@ -641,9 +658,13 @@ export class LobbyEngine3D {
         
         this.localPlayer.isWalkHopping = true;
         this.localPlayer.y = -Math.abs(Math.sin(Date.now() / 100) * 10);
+        
+        // Walk time for camera bob
+        this.walkTime += deltaTime * (isSprinting ? 14 : 8);
       } else {
         this.localPlayer.isWalkHopping = false;
         this.localPlayer.y = 0;
+        this.walkTime = 0;
       }
       
       // Bound
@@ -654,20 +675,25 @@ export class LobbyEngine3D {
       // Hide local sprite in first-person (it would block the view)
       this.localSprite.visible = false;
       
-      // Camera: First Person View
-      // Camera is at the player's eye level, looking in the direction of cameraAngle
+      // Camera: First Person View with head bob
       const eyeHeight = 120;
       const camX = this.localPlayer.x;
-      const camY = eyeHeight;
+      let camY = eyeHeight;
       const camZ = this.localPlayer.z || 0;
+
+      // Camera bob when walking
+      if (isMoving) {
+        const bobAmplitude = isSprinting ? 6 : 3;
+        camY += Math.sin(this.walkTime) * bobAmplitude;
+      }
 
       this.camera.position.set(camX, camY, camZ);
 
       // Look direction based on cameraAngle and cameraPitch
       const lookDist = 100;
-      const lookX = camX - Math.sin(this.cameraAngle) * Math.cos(this.cameraPitch) * lookDist;
-      const lookY = camY - Math.sin(this.cameraPitch) * lookDist;
-      const lookZ = camZ - Math.cos(this.cameraAngle) * Math.cos(this.cameraPitch) * lookDist;
+      const lookX = camX - Math.sin(this.cameraAngle) * lookDist;
+      const lookY = camY + Math.sin(this.cameraPitch) * lookDist;
+      const lookZ = camZ - Math.cos(this.cameraAngle) * lookDist;
 
       this.camera.lookAt(lookX, lookY, lookZ);
       
