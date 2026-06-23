@@ -467,6 +467,9 @@ export class LobbyEngine3D {
     // lobbyPlayers is an object: { socketId: { x, y, z, facing, color, characterType, ... } }
     const currentIds = new Set(Object.keys(lobbyPlayers));
     
+    // Get local player username for backup filter
+    const localUsername = this.localPlayer ? this.localPlayer.username : null;
+    
     // Remove disconnected players
     for (const [socketId, rp] of this.remotePlayers.entries()) {
       if (!currentIds.has(socketId)) {
@@ -483,7 +486,10 @@ export class LobbyEngine3D {
 
     // Update or add remote players
     for (const [id, data] of Object.entries(lobbyPlayers)) {
-      if (id === currentSocketId) continue; // Skip local player
+      // Skip local player by socket ID
+      if (id === currentSocketId) continue;
+      // Also skip if username matches local player (backup filter)
+      if (localUsername && data.username === localUsername) continue;
       
       let rp = this.remotePlayers.get(id);
       if (!rp) {
