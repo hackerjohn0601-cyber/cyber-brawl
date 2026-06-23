@@ -957,9 +957,10 @@
 import { ref, nextTick, onMounted, onUnmounted, reactive, computed, watch } from 'vue';
 import { GameEngine } from '../game/GameEngine';
 import { Player } from '../game/Player';
-import { audioManager } from '../game/AudioManager';
-import { networkManager } from '../game/NetworkManager';
-import { LobbyEngine } from '../game/LobbyEngine';
+import { audioManager } from '../game/AudioManager.js';
+import { networkManager } from '../game/NetworkManager.js';
+import { LobbyEngine } from '../game/LobbyEngine.js';
+import { LobbyEngine3D } from '../game/LobbyEngine3D.js';
 import { SKINS_DB } from '../game/SkinsDB';
 
 // 'LOBBY', 'TUTORIAL', 'MULTIPLAYER_LOBBY', 'CHAR_SELECT', 'FIGHT'
@@ -1884,7 +1885,7 @@ const initLobby = () => {
   audioManager.resume();
   
   if (!lobbyCanvas.value) return;
-  lobbyEngine = new LobbyEngine(lobbyCanvas.value);
+  lobbyEngine = new LobbyEngine3D(lobbyCanvas.value);
   if (leaderboardData.value && leaderboardData.value.length > 0) {
     lobbyEngine.setLeaderboardData(leaderboardData.value);
   }
@@ -1936,6 +1937,7 @@ const initLobby = () => {
       networkManager.sendLobbyUpdate({
         x: p.x,
         y: p.y,
+        z: p.z || 0,
         facing: p.facing,
         color: p.color,
         characterType: p.characterType,

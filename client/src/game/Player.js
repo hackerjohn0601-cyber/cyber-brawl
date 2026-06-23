@@ -5,6 +5,7 @@ export class Player {
   constructor(x, y, color, controls, facing, characterType, isCPU = false, level = 1, equipment = { defense: 0, attack: 0, maxHp: 0 }, skinId = 'default', trophies = 0) {
     this.x = x;
     this.y = y;
+    this.z = 0; // Added for 3D Lobby
     this.width = 50;
     this.height = 100;
     this.color = color;
@@ -2130,6 +2131,37 @@ export class Player {
           if (audioManager.playDefend) audioManager.playDefend();
         });
       }
+       if (!this.engine) {
+      // 3D LOBBY MOVEMENT
+      const moveSpeed = this.speed * deltaTime;
+      if (this.keys[this.controls.left]) this.velocity.x = -moveSpeed;
+      else if (this.keys[this.controls.right]) this.velocity.x = moveSpeed;
+      else this.velocity.x = 0;
+
+      if (this.keys[this.controls.up]) this.z -= moveSpeed * 0.8;
+      else if (this.keys[this.controls.down]) this.z += moveSpeed * 0.8;
+
+      this.x += this.velocity.x;
+      
+      // Simple bound limits for 3D lobby
+      if (this.z < -400) this.z = -400; // Back wall
+      if (this.z > 200) this.z = 200;   // Front wall
+
+      if (this.velocity.x !== 0 || this.keys[this.controls.up] || this.keys[this.controls.down]) {
+        this.isWalkHopping = true;
+        this.y = floorY - this.height - Math.abs(Math.sin(Date.now() / 100) * 10);
+        if (this.velocity.x > 0) this.facing = 1;
+        else if (this.velocity.x < 0) this.facing = -1;
+      } else {
+        this.isWalkHopping = false;
+        this.y = floorY - this.height;
+      }
+      
+      if (this.x < 0) this.x = 0;
+      if (this.x > mapWidth - this.width) this.x = mapWidth - this.width;
+      
+      return;
+    }
     }
   }
 
