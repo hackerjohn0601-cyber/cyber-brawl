@@ -11,17 +11,18 @@ export class LobbyEngine3D {
     this.leaderboardMesh = null;
     
     // Set up WebGL Renderer
-    // Dispose existing WebGL context if canvas was used before
-    const existingContext = this.canvas.getContext('webgl2') || this.canvas.getContext('webgl');
-    if (existingContext && existingContext.getExtension) {
-      const loseCtx = existingContext.getExtension('WEBGL_lose_context');
-      if (loseCtx) loseCtx.loseContext();
+    try {
+      this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true });
+      this.renderer.setSize(1024, 576, false);
+      this.renderer.setClearColor(0x87CEEB);
+      console.log('[LobbyEngine3D] WebGL Renderer created successfully');
+    } catch (e) {
+      console.error('[LobbyEngine3D] WebGL Renderer FAILED:', e);
+      // Fallback: create without antialias
+      this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas });
+      this.renderer.setSize(1024, 576, false);
+      this.renderer.setClearColor(0x87CEEB);
     }
-    
-    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, alpha: false });
-    this.renderer.setSize(1024, 576, false); // Use fixed size, don't update canvas style
-    this.renderer.setClearColor(0x87CEEB); // Bright sky blue background
-    console.log('[LobbyEngine3D] Renderer created, size:', 1024, 576);
     
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x87CEEB); // Bright sky blue
