@@ -1896,7 +1896,9 @@ const initLobby = () => {
     lobbyEngine = null;
   }
   
-  lobbyEngine = new LobbyEngine3D(lobbyCanvas.value);
+  lobbyEngine = import.meta.env.DEV 
+    ? new LobbyEngine3D(lobbyCanvas.value) 
+    : new LobbyEngine(lobbyCanvas.value);
   if (leaderboardData.value && leaderboardData.value.length > 0) {
     lobbyEngine.setLeaderboardData(leaderboardData.value);
   }
