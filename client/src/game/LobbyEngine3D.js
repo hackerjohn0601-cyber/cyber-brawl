@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { Player } from './Player';
 
+function hexToCSS(color) {
+  if (typeof color === 'string') return color;
+  return '#' + (color & 0xFFFFFF).toString(16).padStart(6, '0');
+}
+
 export class LobbyEngine3D {
   constructor(canvas) {
     this.canvas = canvas;
@@ -50,7 +55,12 @@ export class LobbyEngine3D {
     this.scene.add(pointLight);
 
     // Environment
-    this.buildEnvironment();
+    try {
+      this.buildEnvironment();
+      console.log('[LobbyEngine3D] Environment built OK');
+    } catch(e) {
+      console.error('[LobbyEngine3D] buildEnvironment FAILED:', e);
+    }
 
     // Map for player 3D sprites
     this.playerSprites = new Map(); // socketId -> Sprite
@@ -164,24 +174,30 @@ export class LobbyEngine3D {
     this.createPortalMesh(-900, 'Discord TV', 0x5865F2, 'discord');
     this.createPortalMesh(-1200, 'Quest Board', 0xff7675, 'quests');
     this.createPortalMesh(1400, 'Tutorial', 0x00d2d3, 'tutorial');
+    this.createPortalMesh(0, 'TRAINING', 0xff9f43, 'training');
   }
 
   createPortalMesh(x, name, color, action, slotId = null) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 800;
-    canvas.height = 800;
-    const ctx = canvas.getContext('2d');
-    
-    this.drawEquipment(ctx, canvas.width / 2, canvas.height - 100, name, color, action, slotId);
+    try {
+      const cssColor = hexToCSS(color);
+      const canvas = document.createElement('canvas');
+      canvas.width = 800;
+      canvas.height = 800;
+      const ctx = canvas.getContext('2d');
+      
+      this.drawEquipment(ctx, canvas.width / 2, canvas.height - 100, name, cssColor, action, slotId);
 
-    const texture = new THREE.CanvasTexture(canvas);
-    const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
-    const sprite = new THREE.Sprite(spriteMat);
-    
-    sprite.scale.set(400, 400, 1);
-    sprite.position.set(x, 200, -500);
-    sprite.userData = { action, slotId };
-    this.scene.add(sprite);
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const sprite = new THREE.Sprite(spriteMat);
+      
+      sprite.scale.set(400, 400, 1);
+      sprite.position.set(x, 200, -500);
+      sprite.userData = { action, slotId };
+      this.scene.add(sprite);
+    } catch(e) {
+      console.error('[LobbyEngine3D] createPortalMesh FAILED for', name, e);
+    }
   }
 
   drawEquipment(ctx, x, y, text, color, action, slotId) {
@@ -556,9 +572,15 @@ export class LobbyEngine3D {
   }
 
   start() {
+    console.log('[LobbyEngine3D] start() called. Scene children:', this.scene.children.length);
     this.lastTime = performance.now();
     // Render one frame immediately so the screen isn't black
-    this.renderer.render(this.scene, this.camera);
+    try {
+      this.renderer.render(this.scene, this.camera);
+      console.log('[LobbyEngine3D] First frame rendered OK');
+    } catch(e) {
+      console.error('[LobbyEngine3D] First render FAILED:', e);
+    }
     this.animate();
   }
 
@@ -629,22 +651,25 @@ export class LobbyEngine3D {
       if (this.localPlayer.z > 800) this.localPlayer.z = 800;
       
       this.updatePlayerSpriteTexture(this.localSprite);
+      // Hide local sprite in first-person (it would block the view)
+      this.localSprite.visible = false;
       
-      // Camera follow (Orbit)
-      const targetX = this.localPlayer.x;
-      const targetY = 100;
-      const targetZ = this.localPlayer.z || 0;
-      
-      const distance = 400;
-      const idealCamX = targetX + Math.sin(this.cameraAngle) * Math.cos(this.cameraPitch) * distance;
-      const idealCamY = targetY + Math.sin(this.cameraPitch) * distance;
-      const idealCamZ = targetZ + Math.cos(this.cameraAngle) * Math.cos(this.cameraPitch) * distance;
+      // Camera: First Person View
+      // Camera is at the player's eye level, looking in the direction of cameraAngle
+      const eyeHeight = 120;
+      const camX = this.localPlayer.x;
+      const camY = eyeHeight;
+      const camZ = this.localPlayer.z || 0;
 
-      this.camera.position.x += (idealCamX - this.camera.position.x) * 5 * deltaTime;
-      this.camera.position.y += (idealCamY - this.camera.position.y) * 5 * deltaTime;
-      this.camera.position.z += (idealCamZ - this.camera.position.z) * 5 * deltaTime;
+      this.camera.position.set(camX, camY, camZ);
 
-      this.camera.lookAt(targetX, targetY, targetZ);
+      // Look direction based on cameraAngle and cameraPitch
+      const lookDist = 100;
+      const lookX = camX - Math.sin(this.cameraAngle) * Math.cos(this.cameraPitch) * lookDist;
+      const lookY = camY - Math.sin(this.cameraPitch) * lookDist;
+      const lookZ = camZ - Math.cos(this.cameraAngle) * Math.cos(this.cameraPitch) * lookDist;
+
+      this.camera.lookAt(lookX, lookY, lookZ);
       
       // Raycast or distance check for interactions
       if (this.localPlayer.keys['enter']) {
