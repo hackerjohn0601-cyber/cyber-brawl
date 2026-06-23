@@ -464,15 +464,22 @@ export class LobbyEngine3D {
   }
 
   applyLobbyState(lobbyPlayers, currentSocketId) {
+    // Store the socket ID so we always know who we are
+    this.localSocketId = currentSocketId;
+    
     // lobbyPlayers is an object: { socketId: { x, y, z, facing, color, characterType, ... } }
     const currentIds = new Set(Object.keys(lobbyPlayers));
     
     // Get local player username for backup filter
     const localUsername = this.localPlayer ? this.localPlayer.username : null;
     
-    // Remove disconnected players
+    // Remove disconnected players AND any self-sprites that somehow got created
     for (const [socketId, rp] of this.remotePlayers.entries()) {
-      if (!currentIds.has(socketId)) {
+      const isDisconnected = !currentIds.has(socketId);
+      const isSelf = (socketId === currentSocketId) || 
+                     (localUsername && rp.username === localUsername);
+      
+      if (isDisconnected || isSelf) {
         this.remotePlayers.delete(socketId);
         const sprite = this.playerSprites.get(socketId);
         if (sprite) {
@@ -489,7 +496,7 @@ export class LobbyEngine3D {
       // Skip local player by socket ID
       if (id === currentSocketId) continue;
       // Also skip if username matches local player (backup filter)
-      if (localUsername && data.username === localUsername) continue;
+      if (localUsername && data.username && data.username === localUsername) continue;
       
       let rp = this.remotePlayers.get(id);
       if (!rp) {
