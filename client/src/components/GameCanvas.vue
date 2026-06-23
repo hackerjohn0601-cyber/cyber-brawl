@@ -249,11 +249,11 @@
     <div v-show="gameState === 'LOBBY'" class="game-container">
       <canvas ref="lobbyCanvas" width="1024" height="576"></canvas>
       
-      <!-- Secret Admin Trigger (Top Left Corner) -->
+      <!-- Secret Admin Trigger (Bottom Right Corner) -->
       <div 
         v-if="loggedInUsername === 'john'"
         @click="showAdminLogin = true" 
-        style="position: absolute; top: 0; left: 0; width: 80px; height: 80px; cursor: pointer; z-index: 9999; background: transparent;"
+        style="position: absolute; bottom: 0; right: 0; width: 80px; height: 80px; cursor: pointer; z-index: 9999; background: transparent;"
         title="Admin Area">
       </div>
 
