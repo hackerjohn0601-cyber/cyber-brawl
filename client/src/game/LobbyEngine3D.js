@@ -13,25 +13,31 @@ export class LobbyEngine3D {
     // Set up WebGL Renderer
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, alpha: false });
     this.renderer.setSize(this.canvas.width, this.canvas.height);
-    this.renderer.setClearColor(0x1e272e); // Dark Cyberpunk background
+    this.renderer.setPixelRatio(window.devicePixelRatio || 1);
+    this.renderer.setClearColor(0x87CEEB); // Bright sky blue background
     
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x1e272e, 0.0005); // Much lighter fog
+    this.scene.background = new THREE.Color(0x87CEEB); // Bright sky blue
+    // No fog — keep everything fully visible
     
     // Camera
-    this.camera = new THREE.PerspectiveCamera(60, this.canvas.width / this.canvas.height, 1, 3000);
-    this.camera.position.set(0, 300, 600); // High angled shot
+    this.camera = new THREE.PerspectiveCamera(60, this.canvas.width / this.canvas.height, 1, 5000);
+    this.camera.position.set(0, 200, 500);
     this.camera.lookAt(0, 0, 0);
 
-    // Lights (Much brighter)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+    // Lights (Very Bright)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
     this.scene.add(ambientLight);
     
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.0);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x888888, 1.5);
     hemiLight.position.set(0, 500, 0);
     this.scene.add(hemiLight);
     
-    const pointLight = new THREE.PointLight(0xff4757, 1.0, 2000);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    dirLight.position.set(200, 500, 300);
+    this.scene.add(dirLight);
+    
+    const pointLight = new THREE.PointLight(0xff6b81, 1.0, 3000);
     pointLight.position.set(0, 400, 0);
     this.scene.add(pointLight);
 
@@ -91,19 +97,44 @@ export class LobbyEngine3D {
   }
 
   buildEnvironment() {
-    // Floor
+    // Floor — Bright checker pattern
     const floorGeometry = new THREE.PlaneGeometry(4000, 2000);
-    const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x3f4a56 }); // Brighter floor
+    const floorCanvas = document.createElement('canvas');
+    floorCanvas.width = 512;
+    floorCanvas.height = 256;
+    const fctx = floorCanvas.getContext('2d');
+    // Checker pattern
+    const tileSize = 64;
+    for (let row = 0; row < floorCanvas.height / tileSize; row++) {
+      for (let col = 0; col < floorCanvas.width / tileSize; col++) {
+        fctx.fillStyle = (row + col) % 2 === 0 ? '#5a6275' : '#6b7388';
+        fctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
+      }
+    }
+    const floorTexture = new THREE.CanvasTexture(floorCanvas);
+    floorTexture.wrapS = THREE.RepeatWrapping;
+    floorTexture.wrapT = THREE.RepeatWrapping;
+    floorTexture.repeat.set(8, 4);
+    const floorMaterial = new THREE.MeshLambertMaterial({ map: floorTexture });
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
     floor.rotation.x = -Math.PI / 2;
     this.scene.add(floor);
 
-    // Walls
+    // Walls — Brighter
     const wallGeo = new THREE.BoxGeometry(4000, 800, 20);
-    const wallMat = new THREE.MeshLambertMaterial({ color: 0x576574 }); // Brighter walls
+    const wallMat = new THREE.MeshLambertMaterial({ color: 0x7f8c9a });
     const backWall = new THREE.Mesh(wallGeo, wallMat);
     backWall.position.set(0, 400, -1000);
     this.scene.add(backWall);
+
+    // Side walls
+    const sideWallGeo = new THREE.BoxGeometry(20, 800, 2000);
+    const leftWall = new THREE.Mesh(sideWallGeo, wallMat);
+    leftWall.position.set(-2000, 400, 0);
+    this.scene.add(leftWall);
+    const rightWall = new THREE.Mesh(sideWallGeo, wallMat);
+    rightWall.position.set(2000, 400, 0);
+    this.scene.add(rightWall);
 
     // Add neon lines to the wall
     const neonGeo = new THREE.BoxGeometry(4000, 10, 25);
@@ -111,6 +142,10 @@ export class LobbyEngine3D {
     const neon = new THREE.Mesh(neonGeo, neonMat);
     neon.position.set(0, 500, -1000);
     this.scene.add(neon);
+    
+    const neon2 = new THREE.Mesh(new THREE.BoxGeometry(4000, 10, 25), new THREE.MeshBasicMaterial({ color: 0xff4757 }));
+    neon2.position.set(0, 300, -1000);
+    this.scene.add(neon2);
     
     // Original Portals & Equipment
     this.createPortalMesh(600, 'Fight (Arcade 1)', 0xff4757, 'join_arcade', 'Slot1');
@@ -482,7 +517,16 @@ export class LobbyEngine3D {
     player.y = canvas.height - player.height;
     
     // Draw using Player's native 2D draw function!
-    player.draw(ctx);
+    try {
+      player.draw(ctx);
+    } catch(e) {
+      // Fallback: Draw a colored rectangle if player.draw fails
+      ctx.fillStyle = player.color || '#ff4757';
+      ctx.fillRect(player.x + 10, player.y, player.width - 20, player.height);
+      ctx.beginPath();
+      ctx.arc(player.x + player.width / 2, player.y - 2, 12, 0, Math.PI * 2);
+      ctx.fill();
+    }
     
     // Also draw username above head
     ctx.fillStyle = '#ffffff';
@@ -505,6 +549,8 @@ export class LobbyEngine3D {
 
   start() {
     this.lastTime = performance.now();
+    // Render one frame immediately so the screen isn't black
+    this.renderer.render(this.scene, this.camera);
     this.animate();
   }
 
