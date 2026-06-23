@@ -473,6 +473,13 @@ export class LobbyEngine3D {
     // Get local player username for backup filter
     const localUsername = this.localPlayer ? this.localPlayer.username : null;
     
+    // DEBUG: Log all incoming players
+    const allIds = Object.keys(lobbyPlayers);
+    console.log(`[Lobby3D] applyLobbyState: ${allIds.length} players from server. mySocketId="${currentSocketId}", myUsername="${localUsername}". IDs: ${allIds.join(', ')}`);
+    for (const [id, data] of Object.entries(lobbyPlayers)) {
+      console.log(`[Lobby3D]   - ${id}: username="${data.username}" (skip=${id === currentSocketId || (localUsername && data.username === localUsername)})`);
+    }
+    
     // Remove disconnected players AND any self-sprites that somehow got created
     for (const [socketId, rp] of this.remotePlayers.entries()) {
       const isDisconnected = !currentIds.has(socketId);
@@ -480,6 +487,7 @@ export class LobbyEngine3D {
                      (localUsername && rp.username === localUsername);
       
       if (isDisconnected || isSelf) {
+        console.log(`[Lobby3D] Removing remote sprite: ${socketId} (disconnected=${isDisconnected}, self=${isSelf})`);
         this.remotePlayers.delete(socketId);
         const sprite = this.playerSprites.get(socketId);
         if (sprite) {
