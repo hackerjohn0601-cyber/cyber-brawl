@@ -40,7 +40,7 @@ export class LobbyEngine {
       { id: 'shop', x: 1204, y: this.floors[0], text: 'SECRET SHOP', color: '#fbc531', floor: 0 },
       { id: 'skin_shop', x: 1574, y: this.floors[0], text: '服裝商店 (SKIN SHOP)', color: '#e056fd', floor: 0 },
       { id: 'discord', x: 250, y: this.floors[1], text: '官方 DISCORD 社群', color: '#5865F2', floor: 1 },
-      { id: 'boss_raid', x: 1524, y: this.floors[2], text: 'BOSS RAID 🐉', color: '#e74c3c', floor: 2 }
+      { id: 'boss_raid', x: 250, y: this.floors[2], text: 'BOSS RAID 🐉', color: '#e74c3c', floor: 2 }
     ];
     
     // Arcade Cabinets (Shifted +1024 to the right)
@@ -298,6 +298,12 @@ export class LobbyEngine {
         this.ctx.textAlign = 'center';
         this.ctx.fillText("💬", p.x, p.y - 80);
         this.drawPortal(p.x, p.y, p.text, p.color);
+      } else if (p.id === 'boss_raid') {
+        // Boss teaser door is already drawn, just add floating text
+        this.ctx.fillStyle = p.color;
+        this.ctx.font = 'bold 20px Inter';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(p.text, p.x, p.y - 120);
       } else {
         this.drawPortal(p.x, p.y, p.text, p.color);
       }
