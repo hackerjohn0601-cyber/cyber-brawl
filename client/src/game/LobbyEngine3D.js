@@ -16,19 +16,23 @@ export class LobbyEngine3D {
     this.renderer.setClearColor(0x1e272e); // Dark Cyberpunk background
     
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x1e272e, 0.0015);
+    this.scene.fog = new THREE.FogExp2(0x1e272e, 0.0005); // Much lighter fog
     
     // Camera
     this.camera = new THREE.PerspectiveCamera(60, this.canvas.width / this.canvas.height, 1, 3000);
     this.camera.position.set(0, 300, 600); // High angled shot
     this.camera.lookAt(0, 0, 0);
 
-    // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // Lights (Much brighter)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
     this.scene.add(ambientLight);
     
-    const pointLight = new THREE.PointLight(0xff4757, 1.5, 1000);
-    pointLight.position.set(0, 500, 0);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.0);
+    hemiLight.position.set(0, 500, 0);
+    this.scene.add(hemiLight);
+    
+    const pointLight = new THREE.PointLight(0xff4757, 1.0, 2000);
+    pointLight.position.set(0, 400, 0);
     this.scene.add(pointLight);
 
     // Environment
@@ -46,16 +50,16 @@ export class LobbyEngine3D {
   buildEnvironment() {
     // Floor
     const floorGeometry = new THREE.PlaneGeometry(4000, 2000);
-    const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x2f3640 });
+    const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x3f4a56 }); // Brighter floor
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
     floor.rotation.x = -Math.PI / 2;
     this.scene.add(floor);
 
     // Walls
-    const wallGeo = new THREE.BoxGeometry(4000, 600, 20);
-    const wallMat = new THREE.MeshLambertMaterial({ color: 0x485460 });
+    const wallGeo = new THREE.BoxGeometry(4000, 800, 20);
+    const wallMat = new THREE.MeshLambertMaterial({ color: 0x576574 }); // Brighter walls
     const backWall = new THREE.Mesh(wallGeo, wallMat);
-    backWall.position.set(0, 300, -1000);
+    backWall.position.set(0, 400, -1000);
     this.scene.add(backWall);
 
     // Add neon lines to the wall
@@ -65,17 +69,41 @@ export class LobbyEngine3D {
     neon.position.set(0, 500, -1000);
     this.scene.add(neon);
     
-    // Portals (Boxes for now)
-    this.createPortalMesh(600, 'Fight (Arcade)', 0xff4757);
-    this.createPortalMesh(-600, 'Shop', 0xfbc531);
+    // Original Portals & Equipment
+    this.createPortalMesh(600, 'Fight (Arcade 1)', 0xff4757, 'join_arcade', 'Slot1');
+    this.createPortalMesh(800, 'Fight (Arcade 2)', 0xff4757, 'join_arcade', 'Slot2');
+    this.createPortalMesh(-300, 'Secret Shop', 0xfbc531, 'shop');
+    this.createPortalMesh(-600, 'Skin Shop', 0xe056fd, 'skin_shop');
+    this.createPortalMesh(1200, 'Gacha Machine', 0xfd79a8, 'gacha');
+    this.createPortalMesh(-900, 'Discord TV', 0x5865F2, 'discord');
+    this.createPortalMesh(-1200, 'Quest Board', 0xff7675, 'quests');
+    this.createPortalMesh(1400, 'Tutorial', 0x00d2d3, 'tutorial');
   }
 
-  createPortalMesh(x, name, color) {
+  createPortalMesh(x, name, color, action, slotId = null) {
     const geo = new THREE.BoxGeometry(100, 150, 100);
     const mat = new THREE.MeshLambertMaterial({ color: color });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(x, 75, -500);
+    mesh.userData = { action, slotId };
     this.scene.add(mesh);
+
+    // Add 3D Text using CanvasTexture
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = color;
+    ctx.font = 'bold 24px Inter';
+    ctx.textAlign = 'center';
+    ctx.fillText(name, 128, 64);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMat = new THREE.SpriteMaterial({ map: texture });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.scale.set(150, 75, 1);
+    sprite.position.set(x, 180, -500);
+    this.scene.add(sprite);
   }
 
   setLeaderboardData(data) {
@@ -335,20 +363,33 @@ export class LobbyEngine3D {
       
       this.updatePlayerSpriteTexture(this.localSprite);
       
-      // Camera follow
+      // Camera follow (Lower angle)
       this.camera.position.x += (this.localPlayer.x - this.camera.position.x) * 5 * deltaTime;
-      this.camera.position.z += ((this.localPlayer.z || 0) + 600 - this.camera.position.z) * 5 * deltaTime;
+      this.camera.position.y += (180 - this.camera.position.y) * 5 * deltaTime;
+      this.camera.position.z += ((this.localPlayer.z || 0) + 400 - this.camera.position.z) * 5 * deltaTime;
       
       // Raycast or distance check for interactions
       if (this.localPlayer.keys['enter']) {
         this.localPlayer.keys['enter'] = false;
         
-        // Simple distance check
-        if (Math.hypot(this.localPlayer.x - 600, (this.localPlayer.z || 0) - (-500)) < 150) {
-          if (this.onInteract) this.onInteract('join_arcade', 'Slot1');
-        }
-        if (Math.hypot(this.localPlayer.x - (-600), (this.localPlayer.z || 0) - (-500)) < 150) {
-          if (this.onInteract) this.onInteract('shop');
+        // Loop through all objects in scene with userData.action
+        for (const obj of this.scene.children) {
+          if (obj.userData && obj.userData.action) {
+            // Simple distance check (within 150 units horizontally and 150 units depth)
+            if (Math.hypot(this.localPlayer.x - obj.position.x, (this.localPlayer.z || 0) - obj.position.z) < 150) {
+              if (this.onInteract) {
+                // Discord requires no portal animation block
+                if (obj.userData.action === 'discord') {
+                  this.onInteract(obj.userData.action);
+                } else if (obj.userData.action === 'join_arcade') {
+                  this.onInteract(obj.userData.action, obj.userData.slotId);
+                } else {
+                  this.onInteract(obj.userData.action);
+                }
+              }
+              break;
+            }
+          }
         }
       }
     }
