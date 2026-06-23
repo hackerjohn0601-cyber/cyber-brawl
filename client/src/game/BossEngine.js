@@ -424,8 +424,18 @@ export class BossEngine {
             this.boss.takeDamage(damage);
             this.addFloatingText(damage, this.boss.x + this.boss.width/2, this.boss.y + this.boss.height/2, '#f1c40f', player.isUsingSkill);
             
-            this.hitStopTimer = 0.05;
-            this.triggerScreenShake(0.1, 3);
+            // Stronger hit feel
+            if (damage >= 40) {
+              this.hitStopTimer = 0.15;
+              this.triggerScreenShake(0.3, 15);
+            } else if (damage >= 20) {
+              this.hitStopTimer = 0.08;
+              this.triggerScreenShake(0.15, 8);
+            } else {
+              this.hitStopTimer = 0.04;
+              this.triggerScreenShake(0.08, 4);
+            }
+            
             audioManager.playHit();
           }
         }
@@ -453,6 +463,10 @@ export class BossEngine {
           const dmg = e.damage || 15;
           this.boss.takeDamage(dmg);
           this.addFloatingText(dmg, this.boss.x + this.boss.width/2, this.boss.y + this.boss.height/2, '#e74c3c');
+          
+          this.hitStopTimer = 0.08;
+          this.triggerScreenShake(0.15, 8);
+          
           e.isActive = false;
           import('./AudioManager.js').then(({ audioManager }) => { if(audioManager.playHit) audioManager.playHit() });
         }

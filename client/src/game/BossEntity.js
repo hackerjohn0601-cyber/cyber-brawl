@@ -9,8 +9,8 @@ export class BossEntity {
     this.canvasHeight = canvasHeight;
     
     // Stats
-    this.health = 3000;
-    this.maxHealth = 3000;
+    this.health = 1000;
+    this.maxHealth = 1000;
     this.isBoss = true;
     this.name = '暗影恐龍';
     
