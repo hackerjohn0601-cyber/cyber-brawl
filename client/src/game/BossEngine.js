@@ -437,8 +437,8 @@ export class BossEngine {
             }
             
             if (player.characterType === 'Gunslinger') {
-              this.boss.isStunned = true;
-              this.boss.stunTimer = 0.8; // 0.8s stun per hit!
+              this.boss.x += player.facing * 20; // slight knockback
+              this.boss.x = Math.max(-100, Math.min(1200, this.boss.x)); // clamp
             }
             
             audioManager.playHit();
@@ -473,8 +473,8 @@ export class BossEngine {
           this.triggerScreenShake(0.3, 16);
           
           if (e.owner && e.owner.characterType === 'Gunslinger') {
-            this.boss.isStunned = true;
-            this.boss.stunTimer = 1.0;
+            this.boss.x += e.facing * 15; // slight knockback
+            this.boss.x = Math.max(-100, Math.min(1200, this.boss.x)); // clamp
           }
           
           e.isActive = false;

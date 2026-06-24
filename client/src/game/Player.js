@@ -3599,6 +3599,11 @@ export class Player {
         ctx.fillStyle = '#2f3542'; ctx.shadowColor = '#57606f'; ctx.shadowBlur = 10;
         const cy_orb = headY - 30 + Math.sin(Date.now()/200)*5;
         ctx.beginPath(); ctx.moveTo(cx, cy_orb - 10); ctx.lineTo(cx + 8, cy_orb); ctx.lineTo(cx, cy_orb + 10); ctx.lineTo(cx - 8, cy_orb); ctx.fill(); ctx.shadowBlur = 0;
+      } else if (this.characterType === 'Gunslinger' && this.skinId === 'renegade') {
+        ctx.fillStyle = '#1e272e'; ctx.beginPath(); ctx.fillRect(cx - 15, headY - 5, 30, 8); // cool shades
+      } else if (this.characterType === 'Gunslinger' && this.skinId === 'outlaw') {
+        ctx.fillStyle = '#8c7ae6'; ctx.beginPath(); ctx.arc(cx, headY, 15, Math.PI, 0); ctx.fill(); // hat
+        ctx.fillRect(cx - 20, headY, 40, 4); // hat brim
       } else if (this.skinId === 'champion') {
         // Grand Flowing Cape
         const capeColor1 = '#f1c40f'; // Gold

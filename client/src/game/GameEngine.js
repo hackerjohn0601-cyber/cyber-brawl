@@ -869,6 +869,9 @@ export class GameEngine {
       defender.isStunned = false;
     } else if (sourceEntity && sourceEntity.type === 'sniperLaser') {
       // Continuous laser does not affect vertical velocity
+    } else if (sourceEntity && sourceEntity.type === 'fireball' && sourceEntity.owner && sourceEntity.owner.characterType === 'Gunslinger') {
+      // Gunslinger bullet only applies horizontal push, no popup, no interrupt
+      defender.velocity.y = 0;
     } else if (sourceEntity && sourceEntity.type === 'shockwave') {
       defender.velocity.y = defender.isDefending ? 0 : -1000;
     } else {
