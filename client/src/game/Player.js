@@ -288,6 +288,10 @@ export class Player {
         this.attackCooldown = false;
         if (this.diveKickReady) this.executeDiveKick();
         return; // Abort normal attack sequence
+      } else if ((this.keys[this.controls.defend] || (this.controls.down && this.keys[this.controls.down])) && this.cooldowns.sweep && this.cooldowns.sweep.current <= 0) {
+        this.attackType = 'sweep';
+        this.comboStep = 1;
+        this.cooldowns.sweep.current = this.cooldowns.sweep.max;
       } else if (this.characterType === 'Gunslinger') {
         this.attackType = `combo${this.comboStep}`;
         this.comboStep++;
@@ -314,17 +318,6 @@ export class Player {
             }
           };
           this.engine.addEntity(bullet);
-        }
-      } else if (this.keys[this.controls.defend] || (this.controls.down && this.keys[this.controls.down])) {
-        if (this.cooldowns.sweep && this.cooldowns.sweep.current <= 0) {
-          this.attackType = 'sweep';
-          this.comboStep = 1;
-          this.cooldowns.sweep.current = this.cooldowns.sweep.max;
-        } else {
-          // Cooldown active, fallback to normal attack
-          this.attackType = `combo${this.comboStep}`;
-          this.comboStep++;
-          if (this.comboStep > 3) this.comboStep = 1;
         }
       } else if (isMovingForward) {
         this.attackType = 'dashPunch';
