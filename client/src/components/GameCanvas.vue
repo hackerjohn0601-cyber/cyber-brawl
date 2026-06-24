@@ -1136,7 +1136,7 @@ let globalBroadcastTimer = null;
 
 const unlockedSkins = ref([]);
 const equippedSkins = ref({});
-const currentSkinIndex = ref({ Striker: 0, Brawler: 0, Assassin: 0, Tank: 0, Ninja: 0, Sniper: 0, Mage: 0 });
+const currentSkinIndex = ref({ Striker: 0, Brawler: 0, Assassin: 0, Tank: 0, Ninja: 0, Sniper: 0, Mage: 0, Gunslinger: 0 });
 
 const getSelectedSkin = (charName) => {
   const skins = SKINS_DB[charName];
@@ -1146,12 +1146,12 @@ const getSelectedSkin = (charName) => {
 
 const nextSkin = (charName) => {
   const skins = SKINS_DB[charName];
-  if (skins) currentSkinIndex.value[charName] = (currentSkinIndex.value[charName] + 1) % skins.length;
+  if (skins) currentSkinIndex.value[charName] = ((currentSkinIndex.value[charName] || 0) + 1) % skins.length;
 };
 
 const prevSkin = (charName) => {
   const skins = SKINS_DB[charName];
-  if (skins) currentSkinIndex.value[charName] = (currentSkinIndex.value[charName] - 1 + skins.length) % skins.length;
+  if (skins) currentSkinIndex.value[charName] = ((currentSkinIndex.value[charName] || 0) - 1 + skins.length) % skins.length;
 };
 
 const hasSkin = (charName, skinId) => {
