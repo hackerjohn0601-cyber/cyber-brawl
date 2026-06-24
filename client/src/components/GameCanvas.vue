@@ -268,6 +268,7 @@
             <option value="Ninja">Ninja (雙刀/風)</option>
             <option value="Brawler">Brawler (重擊/力)</option>
             <option value="Sniper">Sniper (狙擊/雷)</option>
+            <option value="Gunslinger">Gunslinger (雙槍/火)</option>
           </select>
         </div>
 
@@ -281,6 +282,7 @@
             <option value="Ninja">Ninja (雙刀/風)</option>
             <option value="Brawler">Brawler (重擊/力)</option>
             <option value="Sniper">Sniper (狙擊/雷)</option>
+            <option value="Gunslinger">Gunslinger (雙槍/火)</option>
           </select>
         </div>
 
@@ -1315,7 +1317,8 @@ const charData = {
   'Tank': { skill: 'Ground Smash (F)', skill2: 'Ground Smash (Shift)' },
   'Brawler': { skill: 'Dash Punch (F)', skill2: 'Dash Punch (Shift)' },
   'Sniper': { skill: 'Gunshot (F)', skill2: 'Gunshot (Shift)' },
-  'Mage': { skill: 'Homing Magic (F)', skill2: 'Homing Magic (Shift)' }
+  'Mage': { skill: 'Homing Magic (F)', skill2: 'Homing Magic (Shift)' },
+  'Gunslinger': { skill: 'Backflip Grenade (F)', skill2: 'Backflip Grenade (Shift)' }
 };
 
 const showSystemMessage = (msg) => {
@@ -1392,6 +1395,11 @@ const handleAuth = async () => {
       unlockedChars.value.forEach(char => {
         if (!charLevels.value[char]) charLevels.value[char] = 1;
       });
+
+      if (!unlockedChars.value.includes('Gunslinger')) {
+        unlockedChars.value.push('Gunslinger');
+        charLevels.value['Gunslinger'] = 1;
+      }
 
       cpuMatches.value = data.progress.cpuMatches || 0;
       tokens.value = data.progress.tokens || 0;

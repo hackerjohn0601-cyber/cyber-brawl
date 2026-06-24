@@ -9,10 +9,14 @@ export class BossEntity {
     this.canvasHeight = canvasHeight;
     
     // Stats
-    this.health = 1000;
-    this.maxHealth = 1000;
+    this.health = 500;
+    this.maxHealth = 500;
     this.isBoss = true;
     this.name = '暗影恐龍';
+    
+    // CC (Crowd Control) states
+    this.isStunned = false;
+    this.stunTimer = 0;
     
     // Movement
     this.velocity = { x: 0, y: 0 };
@@ -100,6 +104,29 @@ export class BossEntity {
         this.phaseTransitioning = false;
       }
       return;
+    }
+    
+    // CC (Stun) handling
+    if (this.isStunned) {
+      this.stunTimer -= deltaTime;
+      this.velocity.x = 0; // Boss cannot move while stunned
+      if (this.stunTimer <= 0) {
+        this.isStunned = false;
+      }
+      
+      // Still apply gravity and move boss but skip attacking/AI
+      if (!this.isGrounded) {
+        this.velocity.y += this.gravity * deltaTime;
+      }
+      this.x += this.velocity.x * deltaTime;
+      this.y += this.velocity.y * deltaTime;
+      
+      if (this.y >= this.floorY) {
+        this.y = this.floorY;
+        this.velocity.y = 0;
+        this.isGrounded = true;
+      }
+      return; // Skip the rest of AI
     }
     
     // Phase 3 darkness
@@ -439,6 +466,26 @@ export class BossEntity {
     
     const cx = this.x + this.width / 2;
     const by = this.y + this.height; // Bottom Y
+    
+    if (this.isStunned) {
+      // Make the dinosaur fall over!
+      ctx.translate(cx, by);
+      ctx.rotate(-Math.PI / 2 * this.facing);
+      ctx.translate(-cx, -by);
+      
+      // Draw stun stars
+      ctx.save();
+      ctx.translate(cx, by - 200);
+      for (let i = 0; i < 3; i++) {
+        const angle = (Date.now() / 200) + (i * Math.PI * 2 / 3);
+        const sx = Math.cos(angle) * 30;
+        const sy = Math.sin(angle) * 10;
+        ctx.fillStyle = '#f1c40f';
+        ctx.font = '24px Arial';
+        ctx.fillText('⭐', sx - 12, sy + 8);
+      }
+      ctx.restore();
+    }
     
     // Hit flash
     if (this.hitFlashTimer > 0) {

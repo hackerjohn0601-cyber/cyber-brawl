@@ -427,13 +427,18 @@ export class BossEngine {
             // Stronger hit feel
             if (damage >= 40) {
               this.hitStopTimer = 0.15;
-              this.triggerScreenShake(0.3, 15);
+              this.triggerScreenShake(0.4, 30);
             } else if (damage >= 20) {
               this.hitStopTimer = 0.08;
-              this.triggerScreenShake(0.15, 8);
+              this.triggerScreenShake(0.2, 16);
             } else {
               this.hitStopTimer = 0.04;
-              this.triggerScreenShake(0.08, 4);
+              this.triggerScreenShake(0.1, 8);
+            }
+            
+            if (player.characterType === 'Gunslinger') {
+              this.boss.isStunned = true;
+              this.boss.stunTimer = 0.8; // 0.8s stun per hit!
             }
             
             audioManager.playHit();
@@ -465,7 +470,12 @@ export class BossEngine {
           this.addFloatingText(dmg, this.boss.x + this.boss.width/2, this.boss.y + this.boss.height/2, '#e74c3c');
           
           this.hitStopTimer = 0.08;
-          this.triggerScreenShake(0.15, 8);
+          this.triggerScreenShake(0.3, 16);
+          
+          if (e.owner && e.owner.characterType === 'Gunslinger') {
+            this.boss.isStunned = true;
+            this.boss.stunTimer = 1.0;
+          }
           
           e.isActive = false;
           import('./AudioManager.js').then(({ audioManager }) => { if(audioManager.playHit) audioManager.playHit() });

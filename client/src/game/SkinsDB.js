@@ -47,5 +47,12 @@ export const SKINS_DB = {
     { id: 'darkmage', name: '黑魔導 (Dark Mage)', color: '#3742fa', price: 50 },
     { id: 'champion', name: '🏆 傳奇冠軍 (Champion)', color: '#ffffff', price: 'trophy' },
     { id: 'grandmaster', name: '🌟 榮耀宗師 (Grandmaster)', color: '#e056fd', price: 'trophy' }
+  ],
+  Gunslinger: [
+    { id: 'default', name: '預設 (Default)', color: '#e84118', price: 0 },
+    { id: 'renegade', name: '叛逆者 (Renegade)', color: '#c23616', price: 50 },
+    { id: 'outlaw', name: '亡命之徒 (Outlaw)', color: '#2f3640', price: 50 },
+    { id: 'champion', name: '🏆 傳奇冠軍 (Champion)', color: '#ffffff', price: 'trophy' },
+    { id: 'grandmaster', name: '🌟 榮耀宗師 (Grandmaster)', color: '#e056fd', price: 'trophy' }
   ]
 };
