@@ -1125,6 +1125,19 @@ watch(trophies, (newVal) => {
     }
   }
 });
+
+let adminRefreshInterval = null;
+watch(showAdminDashboard, (isOpen) => {
+  if (isOpen) {
+    refreshOnlinePlayers(); // Initial fetch
+    adminRefreshInterval = setInterval(() => {
+      refreshOnlinePlayers();
+    }, 2000);
+  } else {
+    if (adminRefreshInterval) clearInterval(adminRefreshInterval);
+  }
+});
+
 const charPlayTime = ref({}); // Tracks play time in minutes per character
 const playerEquipment = ref({ defense: 0, attack: 0, maxHp: 0 });
 const quests = ref({ parries: 0, cpuDefeated: 0, ultimatesHit: 0, skillsUsed: 0, totalWins: 0, perfectWins: 0 });
