@@ -3697,7 +3697,50 @@ export class Player {
           ctx.moveTo(sx, sy - 5); ctx.lineTo(sx + 3, sy); ctx.lineTo(sx, sy + 5); ctx.lineTo(sx - 3, sy);
           ctx.fill();
         }
-        
+        // Huge floating guns for Gunslinger
+        if (this.characterType === 'Gunslinger') {
+          ctx.save();
+          const gunT = Date.now() / 300;
+          const gunColor = '#2d3436';
+          const gunTrim = '#e056fd';
+          
+          for (let side = -1; side <= 1; side += 2) {
+            ctx.save();
+            const gunX = cx + side * 60;
+            const gunY = shoulderY - 10 + Math.sin(gunT + side) * 15;
+            ctx.translate(gunX, gunY);
+            ctx.rotate((side * Math.PI / 8) + Math.sin(gunT * 0.5) * 0.1);
+            
+            // Draw a SUPER huge futuristic handgun (approx 180px long, definitely bigger than person)
+            ctx.shadowColor = gunTrim;
+            ctx.shadowBlur = 15;
+            
+            // Barrel
+            ctx.fillStyle = gunColor;
+            ctx.fillRect(-18, -100, 36, 120);
+            
+            // Grip
+            ctx.fillStyle = '#1e272e';
+            ctx.beginPath();
+            ctx.moveTo(-15, 30);
+            ctx.lineTo(15, 30);
+            ctx.lineTo(25, 80);
+            ctx.lineTo(-5, 80);
+            ctx.fill();
+            
+            // Cylinder / Core
+            ctx.fillStyle = gunTrim;
+            ctx.fillRect(-22, -15, 44, 40);
+            
+            // Barrel accents
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-6, -90, 12, 60);
+            
+            ctx.restore();
+          }
+          ctx.restore();
+        }
+
         ctx.restore();
       }
     }
