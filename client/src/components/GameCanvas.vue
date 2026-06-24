@@ -2004,6 +2004,7 @@ const initLobby = () => {
 
   // Boss quest state
   lobbyEngine.bossQuestDone = bossQuestDone.value;
+  lobbyEngine.cpuDefeated = quests.value.cpuDefeated || 0;
   lobbyEngine.onBossQuestComplete = () => {
     bossQuestDone.value = true;
     saveProgress();
