@@ -3706,35 +3706,64 @@ export class Player {
           
           for (let side = -1; side <= 1; side += 2) {
             ctx.save();
-            const gunX = cx + side * 60;
-            const gunY = shoulderY - 10 + Math.sin(gunT + side) * 15;
-            ctx.translate(gunX, gunY);
-            ctx.rotate((side * Math.PI / 8) + Math.sin(gunT * 0.5) * 0.1);
+            const isGunShooting = this.isAttacking && this.attackType && this.attackType.startsWith('combo');
             
-            // Draw a SUPER huge futuristic handgun (approx 180px long, definitely bigger than person)
+            let gunX = cx + side * 45;
+            let gunY = shoulderY - 10 + Math.sin(gunT + side) * 10;
+            
+            // Recoil effect when shooting
+            let recoil = 0;
+            if (isGunShooting) {
+              recoil = Math.sin(this.attackProgress * Math.PI) * 15;
+              gunX -= this.facing * recoil;
+            }
+            
+            ctx.translate(gunX, gunY);
+            
+            if (isGunShooting) {
+              // Aim straight forward at enemies
+              ctx.rotate(f * Math.PI / 2);
+            } else {
+              // Idle floating state
+              ctx.rotate((side * Math.PI / 8) + Math.sin(gunT * 0.5) * 0.1);
+            }
+            
+            // Draw a huge futuristic handgun (approx 120px long, bigger than person)
             ctx.shadowColor = gunTrim;
-            ctx.shadowBlur = 15;
+            ctx.shadowBlur = 10;
             
             // Barrel
             ctx.fillStyle = gunColor;
-            ctx.fillRect(-18, -100, 36, 120);
+            ctx.fillRect(-12, -70, 24, 90);
             
             // Grip
             ctx.fillStyle = '#1e272e';
             ctx.beginPath();
-            ctx.moveTo(-15, 30);
-            ctx.lineTo(15, 30);
-            ctx.lineTo(25, 80);
-            ctx.lineTo(-5, 80);
+            ctx.moveTo(-10, 20);
+            ctx.lineTo(10, 20);
+            ctx.lineTo(18, 60);
+            ctx.lineTo(-2, 60);
             ctx.fill();
             
             // Cylinder / Core
             ctx.fillStyle = gunTrim;
-            ctx.fillRect(-22, -15, 44, 40);
+            ctx.fillRect(-16, -10, 32, 30);
             
             // Barrel accents
             ctx.fillStyle = '#ffffff';
-            ctx.fillRect(-6, -90, 12, 60);
+            ctx.fillRect(-4, -65, 8, 45);
+            
+            // Muzzle flash when shooting
+            if (isGunShooting && this.attackProgress < 0.3) {
+              ctx.fillStyle = '#feca57';
+              ctx.beginPath();
+              ctx.arc(0, -85, 15 + Math.random() * 10, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.fillStyle = '#fff';
+              ctx.beginPath();
+              ctx.arc(0, -85, 8, 0, Math.PI * 2);
+              ctx.fill();
+            }
             
             ctx.restore();
           }
