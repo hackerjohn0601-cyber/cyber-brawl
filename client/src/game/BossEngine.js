@@ -332,8 +332,15 @@ export class BossEngine {
     
     // All players dead = check if everyone is dead at once
     const allDead = this.players.every(p => p.isDead);
-    // Don't end game - players will respawn after 20 sec
-    
+    if (allDead && !this.isGameOver) {
+      this.isDefeat = true;
+      this.isGameOver = true;
+      this.phaseAnnouncement = 'DEFEAT...';
+      this.phaseAnnouncementTimer = 5.0;
+      if (this.onDefeat) {
+        this.onDefeat();
+      }
+    }
     // Health callbacks
     if (this.onBossHealthChange) {
       this.onBossHealthChange(this.boss.health, this.boss.maxHealth, this.boss.phase);
@@ -569,7 +576,7 @@ export class BossEngine {
       }
       
       // Laser
-      if (this.boss.laserActive) {
+      if (this.boss.laserActive && !this.boss.laserIsWarning) {
         if (Math.abs(player.y + player.height/2 - this.boss.laserY) < 25) {
           this.damagePlayer(player, 60);
         }

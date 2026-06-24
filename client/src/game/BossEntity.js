@@ -254,10 +254,11 @@ export class BossEntity {
         break;
         
       case 'laser_sweep':
-        this.attackTimer = 2.0;
+        this.attackTimer = 3.0;
         this.laserActive = true;
         this.laserY = 0;
-        this.laserTimer = 2.0;
+        this.laserTimer = 3.0;
+        this.laserIsWarning = true;
         this.mouthOpen = true;
         this.roarTimer = 2.0;
         break;
@@ -434,7 +435,19 @@ export class BossEntity {
   updateLaser(dt) {
     if (!this.laserActive) return;
     this.laserTimer -= dt;
-    this.laserY = (1 - this.laserTimer / 2.0) * this.floorY;
+    
+    // Total 3 seconds. First 1.5 seconds is warning sweep, last 1.5s is active damage sweep
+    if (this.laserTimer > 1.5) {
+      // Warning phase: sweep down to track player roughly, or just sweep down slowly
+      this.laserY = (1 - (this.laserTimer - 1.5) / 1.5) * this.floorY;
+      this.laserIsWarning = true;
+    } else {
+      // Damage phase: sweeps down again faster, or stays at bottom?
+      // Let's make the damage sweep happen now
+      this.laserY = (1 - this.laserTimer / 1.5) * this.floorY;
+      this.laserIsWarning = false;
+    }
+    
     if (this.laserTimer <= 0) {
       this.laserActive = false;
     }
@@ -808,15 +821,25 @@ export class BossEntity {
     if (!this.laserActive) return;
     ctx.save();
     const beamX = this.x + this.width / 2 + this.facing * 60;
-    ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#e74c3c';
-    ctx.shadowBlur = 30;
-    ctx.shadowColor = '#ff0040';
-    // Main beam
-    ctx.fillRect(beamX - 5, this.laserY - 10, this.canvasWidth, 20);
-    // Glow
-    ctx.globalAlpha = 0.3;
-    ctx.fillRect(beamX - 5, this.laserY - 25, this.canvasWidth, 50);
+    
+    if (this.laserIsWarning) {
+      // Warning phase: thin, highly transparent line
+      ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 100) * 0.2; // pulse
+      ctx.fillStyle = '#ff9ff3';
+      ctx.fillRect(beamX - 5, this.laserY - 2, this.canvasWidth, 4);
+    } else {
+      // Damage phase: full thick beam
+      ctx.globalAlpha = 0.8 + Math.sin(Date.now() / 50) * 0.2;
+      ctx.fillStyle = '#ff0000';
+      ctx.shadowBlur = 30;
+      ctx.shadowColor = '#ff0000';
+      // Main beam
+      ctx.fillRect(beamX - 5, this.laserY - 15, this.canvasWidth, 30);
+      // Glow
+      ctx.globalAlpha = 0.4;
+      ctx.fillRect(beamX - 5, this.laserY - 35, this.canvasWidth, 70);
+    }
+    
     ctx.restore();
   }
 }
