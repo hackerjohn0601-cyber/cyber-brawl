@@ -1141,6 +1141,7 @@ watch(showAdminDashboard, (isOpen) => {
 const charPlayTime = ref({}); // Tracks play time in minutes per character
 const playerEquipment = ref({ defense: 0, attack: 0, maxHp: 0 });
 const quests = ref({ parries: 0, cpuDefeated: 0, ultimatesHit: 0, skillsUsed: 0, totalWins: 0, perfectWins: 0 });
+const bossQuestDone = ref(false); // Permanently tracks boss quest completion
 
 const showMilestoneCelebration = ref(false);
 const milestoneType = ref(0);
@@ -1357,7 +1358,8 @@ const saveProgress = async () => {
     equippedSkins: equippedSkins.value,
     dailyQuests: dailyQuests.value,
     lastDailyDate: lastDailyDate.value,
-    hasUsedDailyRefresh: hasUsedDailyRefresh.value
+    hasUsedDailyRefresh: hasUsedDailyRefresh.value,
+    bossQuestDone: bossQuestDone.value
   };
   
   try {
@@ -1444,6 +1446,7 @@ const handleAuth = async () => {
          lastDailyDate.value = data.progress.lastDailyDate || today;
          hasUsedDailyRefresh.value = data.progress.hasUsedDailyRefresh || false;
       }
+      bossQuestDone.value = data.progress.bossQuestDone || false;
     }
     
     // Enter Lobby
@@ -1997,6 +2000,13 @@ const initLobby = () => {
       gameState.value = 'BOSS_TEAM_SELECT';
       if (lobbyEngine) lobbyEngine.stop();
     }
+  };
+
+  // Boss quest state
+  lobbyEngine.bossQuestDone = bossQuestDone.value;
+  lobbyEngine.onBossQuestComplete = () => {
+    bossQuestDone.value = true;
+    saveProgress();
   };
   
   lobbyEngine.start();

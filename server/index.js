@@ -11,13 +11,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
-  fs.appendFileSync(path.join(__dirname, 'crash.log'), `Uncaught Exception: ${err.stack}\n`);
+  if (err.code === 'EPIPE') return; // Ignore stdout EPIPE to prevent infinite loop
+  try {
+    fs.appendFileSync(path.join(__dirname, 'crash.log'), `Uncaught Exception: ${err.stack}\n`);
+    console.error('Uncaught Exception:', err);
+  } catch (e) {}
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection:', reason);
-  fs.appendFileSync(path.join(__dirname, 'crash.log'), `Unhandled Rejection: ${reason && reason.stack ? reason.stack : reason}\n`);
+  try {
+    fs.appendFileSync(path.join(__dirname, 'crash.log'), `Unhandled Rejection: ${reason && reason.stack ? reason.stack : reason}\n`);
+    console.error('Unhandled Rejection:', reason);
+  } catch (e) {}
 });
 
 const app = express();

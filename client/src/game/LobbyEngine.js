@@ -63,6 +63,21 @@ export class LobbyEngine {
     // Callback when player triggers an interaction
     this.onInteract = null;
 
+    // ===== BOSS QUEST SYSTEM =====
+    // Quest steps: 0=not started, 1=dummy destroyed, 2=core picked up, 3=generator activated, 4=NPC talked (complete)
+    this.bossQuestStep = 0;
+    this.bossQuestDone = false; // Set to true if permanently unlocked (loaded from save)
+    this.onBossQuestComplete = null; // Callback when quest is finished
+
+    // Quest Objects (all on Floor 2 near the boss door)
+    this.questDummy = { x: 500, y: this.floors[2], hp: 10, maxHp: 10, alive: true, shakeTimer: 0 };
+    this.questCore = { x: 500, y: this.floors[2] - 20, visible: false, pickedUp: false, floatOffset: 0 };
+    this.questGenerator = { x: 800, y: this.floors[2], activated: false, chargeAnim: 0 };
+    this.questNPC = { x: 350, y: this.floors[2], awake: false, talked: false, dialogTimer: 0, dialogText: '' };
+    this.questAttackCooldown = 0;
+    this.questMessage = ''; // floating message
+    this.questMessageTimer = 0;
+
     // Create hidden video element for the Big TV in the Chill Zone
     this.gameplayVideo = document.createElement('video');
     this.gameplayVideo.src = '/gameplay.mp4'; // Use local file from client/public/
@@ -174,6 +189,9 @@ export class LobbyEngine {
       if (targetCameraX < 0) targetCameraX = 0;
       if (targetCameraX > this.mapWidth - viewWidth) targetCameraX = this.mapWidth - viewWidth;
       this.cameraX += (targetCameraX - this.cameraX) * 5 * deltaTime;
+
+      // ===== BOSS QUEST UPDATE =====
+      this.updateBossQuest(deltaTime);
       
       // Check interactions
       if (this.localPlayer.keys['enter']) {
@@ -182,6 +200,40 @@ export class LobbyEngine {
         
         // If already entering portal, do nothing
         if (this.localPlayer.isEnteringPortal) return;
+
+        // ===== BOSS QUEST ENTER INTERACTIONS =====
+        if (this.currentFloor === 2 && !this.bossQuestDone) {
+          // Step 2: Pick up energy core
+          if (this.bossQuestStep === 1 && this.questCore.visible && !this.questCore.pickedUp) {
+            if (Math.abs(this.localPlayer.x - this.questCore.x) < 60) {
+              this.questCore.pickedUp = true;
+              this.questCore.visible = false;
+              this.bossQuestStep = 2;
+              this.showQuestMessage('💎 已撿起能量核心！去找到發電機吧！');
+            }
+          }
+          // Step 3: Activate generator
+          if (this.bossQuestStep === 2 && !this.questGenerator.activated) {
+            if (Math.abs(this.localPlayer.x - this.questGenerator.x) < 60) {
+              this.questGenerator.activated = true;
+              this.bossQuestStep = 3;
+              this.questNPC.awake = true;
+              this.showQuestMessage('⚡ 發電機啟動！守門人醒來了，去跟他說話！');
+            }
+          }
+          // Step 4: Talk to NPC
+          if (this.bossQuestStep === 3 && this.questNPC.awake && !this.questNPC.talked) {
+            if (Math.abs(this.localPlayer.x - this.questNPC.x) < 60) {
+              this.questNPC.talked = true;
+              this.questNPC.dialogText = '你修好了發電機？\n看來你有資格挑戰暗影恐龍了...';
+              this.questNPC.dialogTimer = 3;
+              this.bossQuestStep = 4;
+              this.bossQuestDone = true;
+              this.showQuestMessage('🐉 BOSS 傳送門已解鎖！');
+              if (this.onBossQuestComplete) this.onBossQuestComplete();
+            }
+          }
+        }
         
         let interacted = false;
         // Check portals
@@ -217,6 +269,15 @@ export class LobbyEngine {
             } else if (p.id === 'discord') {
               // Trigger immediately to bypass browser popup blockers
               if (this.onInteract) this.onInteract(p.id);
+            } else if (p.id === 'boss_raid') {
+              // Block if quest not done
+              if (!this.bossQuestDone) {
+                this.showQuestMessage('🔒 傳送門被封鎖了！完成任務才能開啟！');
+              } else {
+                this.localPlayer.startPortalAnimation(() => {
+                  if (this.onInteract) this.onInteract(p.id);
+                });
+              }
             } else {
               this.localPlayer.startPortalAnimation(() => {
                 if (this.onInteract) this.onInteract(p.id);
@@ -236,6 +297,46 @@ export class LobbyEngine {
               interacted = true;
               break;
             }
+          }
+        }
+      }
+    }
+  }
+
+  // ===== BOSS QUEST METHODS =====
+  showQuestMessage(msg) {
+    this.questMessage = msg;
+    this.questMessageTimer = 3;
+  }
+
+  updateBossQuest(deltaTime) {
+    // Timers
+    if (this.questMessageTimer > 0) this.questMessageTimer -= deltaTime;
+    if (this.questDummy.shakeTimer > 0) this.questDummy.shakeTimer -= deltaTime;
+    if (this.questNPC.dialogTimer > 0) this.questNPC.dialogTimer -= deltaTime;
+    if (this.questAttackCooldown > 0) this.questAttackCooldown -= deltaTime;
+    this.questCore.floatOffset = Math.sin(Date.now() / 400) * 8;
+
+    // Only process quest on floor 2 and if not already permanently done
+    if (this.currentFloor !== 2 || this.bossQuestDone) return;
+
+    // Step 1: Detect player attacking near the dummy
+    if (this.bossQuestStep === 0 && this.questDummy.alive) {
+      const px = this.localPlayer.x + this.localPlayer.width / 2;
+      const dist = Math.abs(px - this.questDummy.x);
+      if (dist < 80) {
+        // Check if player pressed attack key
+        const atkKey = this.localPlayer.controls?.attack;
+        if (atkKey && this.localPlayer.keys[atkKey] && this.questAttackCooldown <= 0) {
+          this.questDummy.hp--;
+          this.questDummy.shakeTimer = 0.15;
+          this.questAttackCooldown = 0.3;
+          if (this.questDummy.hp <= 0) {
+            this.questDummy.alive = false;
+            this.questCore.visible = true;
+            this.questCore.x = this.questDummy.x;
+            this.bossQuestStep = 1;
+            this.showQuestMessage('💥 假人被打爆了！地上掉出了能量核心，按 ENTER 撿起來！');
           }
         }
       }
@@ -274,6 +375,9 @@ export class LobbyEngine {
     // Draw Boss Battle Teaser (Floor 2 left side)
     this.drawBossTeaser(100, this.floors[2]);
 
+    // Draw Boss Quest Objects (Floor 2)
+    this.drawBossQuestObjects();
+
     // Draw decorations
     this.drawDecorations();
 
@@ -299,11 +403,18 @@ export class LobbyEngine {
         this.ctx.fillText("💬", p.x, p.y - 80);
         this.drawPortal(p.x, p.y, p.text, p.color);
       } else if (p.id === 'boss_raid') {
-        // Boss teaser door is already drawn, just add floating text
-        this.ctx.fillStyle = p.color;
-        this.ctx.font = 'bold 20px Inter';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText(p.text, p.x, p.y - 120);
+        // Draw locked or unlocked boss door
+        if (this.bossQuestDone) {
+          this.ctx.fillStyle = p.color;
+          this.ctx.font = 'bold 20px Inter';
+          this.ctx.textAlign = 'center';
+          this.ctx.fillText(p.text, p.x, p.y - 120);
+        } else {
+          this.ctx.fillStyle = '#555';
+          this.ctx.font = 'bold 20px Inter';
+          this.ctx.textAlign = 'center';
+          this.ctx.fillText('🔒 BOSS RAID (未解鎖)', p.x, p.y - 120);
+        }
       } else {
         this.drawPortal(p.x, p.y, p.text, p.color);
       }
@@ -355,7 +466,27 @@ export class LobbyEngine {
       // Draw interaction prompts
       let nearObj = null;
       for (const p of this.portals) {
-        if (p.floor === this.currentFloor && Math.abs(this.localPlayer.x - p.x) < 50) nearObj = p.text;
+        if (p.floor === this.currentFloor && Math.abs(this.localPlayer.x - p.x) < 50) {
+          if (p.id === 'boss_raid' && !this.bossQuestDone) {
+            nearObj = '🔒 完成任務以開啟';
+          } else {
+            nearObj = p.text;
+          }
+        }
+      }
+      
+      // Quest interaction prompts
+      if (!nearObj && this.currentFloor === 2 && !this.bossQuestDone) {
+        const px = this.localPlayer.x;
+        if (this.bossQuestStep === 0 && this.questDummy.alive && Math.abs(px - this.questDummy.x) < 80) {
+          nearObj = '⚔️ 攻擊訓練假人！ (按攻擊鍵)';
+        } else if (this.bossQuestStep === 1 && this.questCore.visible && Math.abs(px - this.questCore.x) < 60) {
+          nearObj = '💎 撿起能量核心';
+        } else if (this.bossQuestStep === 2 && Math.abs(px - this.questGenerator.x) < 60) {
+          nearObj = '⚡ 啟動發電機';
+        } else if (this.bossQuestStep === 3 && this.questNPC.awake && Math.abs(px - this.questNPC.x) < 60) {
+          nearObj = '💬 跟守門人說話';
+        }
       }
       
       if (!nearObj && this.currentFloor === 2) {
@@ -378,8 +509,275 @@ export class LobbyEngine {
         this.ctx.fillText(`Press ${actionText} to ${nearObj}`, this.localPlayer.x + this.localPlayer.width/2, this.localPlayer.y - 30);
       }
     }
+
+    // Draw quest floating message (on top of everything)
+    if (this.questMessageTimer > 0 && this.questMessage) {
+      const alpha = Math.min(1, this.questMessageTimer);
+      this.ctx.globalAlpha = alpha;
+      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      const msgW = this.ctx.measureText(this.questMessage).width + 40;
+      const msgX = (this.localPlayer ? this.localPlayer.x + this.localPlayer.width / 2 : this.canvas.width / 2 / this.zoom) - msgW / 2;
+      this.ctx.fillRect(msgX, this.localPlayer ? this.localPlayer.y - 80 : 100, msgW, 36);
+      this.ctx.fillStyle = '#ffd32a';
+      this.ctx.font = 'bold 16px Inter';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText(this.questMessage, this.localPlayer ? this.localPlayer.x + this.localPlayer.width / 2 : this.canvas.width / 2 / this.zoom, this.localPlayer ? this.localPlayer.y - 56 : 124);
+      this.ctx.globalAlpha = 1;
+    }
     
     this.ctx.restore();
+  }
+
+  // ===== DRAW BOSS QUEST OBJECTS =====
+  drawBossQuestObjects() {
+    const f2 = this.floors[2];
+    const time = Date.now() / 1000;
+
+    // Only draw quest objects if we're looking at floor 2
+    // (The camera system handles which floor is visible)
+
+    // === 1. TRAINING DUMMY ===
+    if (this.questDummy.alive && !this.bossQuestDone) {
+      this.ctx.save();
+      const dx = this.questDummy.x;
+      const dy = f2;
+      const shake = this.questDummy.shakeTimer > 0 ? (Math.random() - 0.5) * 6 : 0;
+
+      // Wooden post
+      this.ctx.fillStyle = '#8B4513';
+      this.ctx.fillRect(dx - 8 + shake, dy - 120, 16, 120);
+
+      // Cross beam (arms)
+      this.ctx.fillStyle = '#A0522D';
+      this.ctx.fillRect(dx - 35 + shake, dy - 100, 70, 12);
+
+      // Head (straw stuffed sack)
+      this.ctx.fillStyle = '#D2B48C';
+      this.ctx.beginPath();
+      this.ctx.arc(dx + shake, dy - 135, 18, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.strokeStyle = '#8B4513';
+      this.ctx.lineWidth = 2;
+      this.ctx.stroke();
+
+      // X eyes
+      this.ctx.strokeStyle = '#333';
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.moveTo(dx - 8 + shake, dy - 140); this.ctx.lineTo(dx - 3 + shake, dy - 135);
+      this.ctx.moveTo(dx - 3 + shake, dy - 140); this.ctx.lineTo(dx - 8 + shake, dy - 135);
+      this.ctx.moveTo(dx + 3 + shake, dy - 140); this.ctx.lineTo(dx + 8 + shake, dy - 135);
+      this.ctx.moveTo(dx + 8 + shake, dy - 140); this.ctx.lineTo(dx + 3 + shake, dy - 135);
+      this.ctx.stroke();
+
+      // HP bar
+      const hpW = 50;
+      this.ctx.fillStyle = '#333';
+      this.ctx.fillRect(dx - hpW / 2, dy - 165, hpW, 8);
+      this.ctx.fillStyle = '#e74c3c';
+      this.ctx.fillRect(dx - hpW / 2, dy - 165, hpW * (this.questDummy.hp / this.questDummy.maxHp), 8);
+
+      // Label
+      this.ctx.fillStyle = '#ff9f43';
+      this.ctx.font = 'bold 14px Inter';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText('訓練假人', dx, dy - 175);
+
+      this.ctx.restore();
+    }
+
+    // === 2. ENERGY CORE (dropped item) ===
+    if (this.questCore.visible && !this.questCore.pickedUp && !this.bossQuestDone) {
+      this.ctx.save();
+      const cx = this.questCore.x;
+      const cy = f2 - 25 + this.questCore.floatOffset;
+
+      // Glow
+      this.ctx.shadowBlur = 20;
+      this.ctx.shadowColor = '#00d2d3';
+
+      // Diamond shape
+      this.ctx.fillStyle = '#00d2d3';
+      this.ctx.beginPath();
+      this.ctx.moveTo(cx, cy - 15);
+      this.ctx.lineTo(cx + 10, cy);
+      this.ctx.lineTo(cx, cy + 15);
+      this.ctx.lineTo(cx - 10, cy);
+      this.ctx.closePath();
+      this.ctx.fill();
+
+      // Inner shine
+      this.ctx.fillStyle = '#fff';
+      this.ctx.globalAlpha = 0.5;
+      this.ctx.beginPath();
+      this.ctx.moveTo(cx, cy - 8);
+      this.ctx.lineTo(cx + 5, cy);
+      this.ctx.lineTo(cx, cy + 8);
+      this.ctx.lineTo(cx - 5, cy);
+      this.ctx.closePath();
+      this.ctx.fill();
+      this.ctx.globalAlpha = 1;
+
+      this.ctx.shadowBlur = 0;
+      this.ctx.fillStyle = '#00d2d3';
+      this.ctx.font = 'bold 12px Inter';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText('能量核心', cx, cy - 25);
+
+      this.ctx.restore();
+    }
+
+    // === 3. GENERATOR ===
+    if (!this.bossQuestDone || this.questGenerator.activated) {
+      this.ctx.save();
+      const gx = this.questGenerator.x;
+      const gy = f2;
+      const isActive = this.questGenerator.activated;
+
+      // Machine body
+      this.ctx.fillStyle = isActive ? '#2d3436' : '#555';
+      this.ctx.fillRect(gx - 30, gy - 90, 60, 90);
+
+      // Control panel
+      this.ctx.fillStyle = isActive ? '#2ecc71' : '#636e72';
+      this.ctx.fillRect(gx - 20, gy - 75, 40, 25);
+
+      // Blinking lights
+      if (isActive) {
+        this.ctx.fillStyle = Math.sin(time * 5) > 0 ? '#2ecc71' : '#27ae60';
+        this.ctx.beginPath();
+        this.ctx.arc(gx - 10, gy - 50, 4, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.fillStyle = Math.sin(time * 7) > 0 ? '#3498db' : '#2980b9';
+        this.ctx.beginPath();
+        this.ctx.arc(gx + 10, gy - 50, 4, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Electric arcs on top
+        this.ctx.strokeStyle = '#f1c40f';
+        this.ctx.lineWidth = 2;
+        this.ctx.shadowBlur = 10;
+        this.ctx.shadowColor = '#f1c40f';
+        this.ctx.beginPath();
+        this.ctx.moveTo(gx - 10, gy - 90);
+        this.ctx.lineTo(gx - 5 + Math.sin(time * 20) * 5, gy - 105);
+        this.ctx.lineTo(gx + 5, gy - 95);
+        this.ctx.lineTo(gx + 10 + Math.cos(time * 15) * 5, gy - 110);
+        this.ctx.stroke();
+        this.ctx.shadowBlur = 0;
+      } else {
+        // Dead lights
+        this.ctx.fillStyle = '#636e72';
+        this.ctx.beginPath();
+        this.ctx.arc(gx - 10, gy - 50, 4, 0, Math.PI * 2);
+        this.ctx.arc(gx + 10, gy - 50, 4, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+
+      // Bolts on the machine
+      this.ctx.fillStyle = '#95a5a6';
+      this.ctx.beginPath();
+      this.ctx.arc(gx - 25, gy - 15, 3, 0, Math.PI * 2);
+      this.ctx.arc(gx + 25, gy - 15, 3, 0, Math.PI * 2);
+      this.ctx.arc(gx - 25, gy - 75, 3, 0, Math.PI * 2);
+      this.ctx.arc(gx + 25, gy - 75, 3, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // Label
+      this.ctx.fillStyle = isActive ? '#2ecc71' : '#999';
+      this.ctx.font = 'bold 13px Inter';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText(isActive ? '發電機 [已啟動]' : '發電機 [斷電]', gx, gy - 100);
+
+      this.ctx.restore();
+    }
+
+    // === 4. NPC GATEKEEPER ===
+    if (!this.bossQuestDone || this.questNPC.talked) {
+      this.ctx.save();
+      const nx = this.questNPC.x;
+      const ny = f2;
+      const awake = this.questNPC.awake || this.bossQuestDone;
+
+      // Shadow
+      this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      this.ctx.beginPath();
+      this.ctx.ellipse(nx, ny, 18, 6, 0, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // Robe body
+      this.ctx.fillStyle = awake ? '#2c2c54' : '#555';
+      this.ctx.beginPath();
+      this.ctx.moveTo(nx - 18, ny);
+      this.ctx.lineTo(nx - 12, ny - 70);
+      this.ctx.lineTo(nx + 12, ny - 70);
+      this.ctx.lineTo(nx + 18, ny);
+      this.ctx.closePath();
+      this.ctx.fill();
+
+      // Hood
+      this.ctx.fillStyle = awake ? '#1e1e3f' : '#444';
+      this.ctx.beginPath();
+      this.ctx.arc(nx, ny - 80, 16, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // Face
+      if (awake) {
+        // Glowing eyes
+        this.ctx.fillStyle = '#ffd32a';
+        this.ctx.shadowBlur = 8;
+        this.ctx.shadowColor = '#ffd32a';
+        this.ctx.beginPath();
+        this.ctx.arc(nx - 5, ny - 82, 3, 0, Math.PI * 2);
+        this.ctx.arc(nx + 5, ny - 82, 3, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.shadowBlur = 0;
+      } else {
+        // Sleeping Zzz
+        this.ctx.fillStyle = '#aaa';
+        this.ctx.font = 'bold 16px Inter';
+        this.ctx.textAlign = 'center';
+        const zzz = Math.sin(time * 2) * 5;
+        this.ctx.fillText('💤', nx + 20, ny - 90 + zzz);
+      }
+
+      // Staff
+      this.ctx.fillStyle = '#8B4513';
+      this.ctx.fillRect(nx + 20, ny - 110, 5, 110);
+      // Staff orb
+      this.ctx.fillStyle = awake ? '#9b59b6' : '#666';
+      if (awake) {
+        this.ctx.shadowBlur = 12;
+        this.ctx.shadowColor = '#9b59b6';
+      }
+      this.ctx.beginPath();
+      this.ctx.arc(nx + 22, ny - 115, 8, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.shadowBlur = 0;
+
+      // Label
+      this.ctx.fillStyle = awake ? '#ffd32a' : '#888';
+      this.ctx.font = 'bold 13px Inter';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText(awake ? '守門人' : '守門人 (沉睡中)', nx, ny - 130);
+
+      // Dialog bubble
+      if (this.questNPC.dialogTimer > 0 && this.questNPC.dialogText) {
+        this.ctx.fillStyle = 'rgba(0,0,0,0.8)';
+        this.ctx.fillRect(nx - 120, ny - 190, 240, 50);
+        this.ctx.strokeStyle = '#ffd32a';
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(nx - 120, ny - 190, 240, 50);
+        this.ctx.fillStyle = '#fff';
+        this.ctx.font = '13px Inter';
+        const lines = this.questNPC.dialogText.split('\n');
+        lines.forEach((line, i) => {
+          this.ctx.fillText(line, nx, ny - 175 + i * 18);
+        });
+      }
+
+      this.ctx.restore();
+    }
   }
 
   drawChillZone(startX, floorY) {
