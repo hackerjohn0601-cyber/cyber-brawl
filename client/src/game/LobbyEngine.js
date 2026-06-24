@@ -71,10 +71,9 @@ export class LobbyEngine {
     this.cpuDefeated = 0; // Set from GameCanvas
 
     // Practice Dummy on Floor 1 (always available, not part of quest)
-    this.practiceDummy = { x: 800, y: this.floors[1], hp: 10, maxHp: 10, shakeTimer: 0, respawnTimer: 0 };
+    this.practiceDummy = { x: 800, y: this.floors[1], hp: 1000, maxHp: 1000, shakeTimer: 0, respawnTimer: 0 };
 
-    // Quest NPC on Floor 1 (requires 20 CPU wins to talk)
-    this.questNPC = { x: 650, y: this.floors[1], talked: false, dialogTimer: 0, dialogText: '' };
+    // Quest: requires 20 CPU wins (checked directly, no NPC needed on F1)
 
     // Generator on B1 (Floor 0)
     this.questGenerator = { x: 700, y: this.floors[0], activated: false };
@@ -211,36 +210,26 @@ export class LobbyEngine {
 
         // ===== BOSS QUEST ENTER INTERACTIONS =====
         if (!this.bossQuestDone) {
-          // Step 0: Talk to NPC on Floor 1 (requires 20 CPU wins)
-          if (this.currentFloor === 1 && this.bossQuestStep === 0 && !this.questNPC.talked) {
-            if (Math.abs(this.localPlayer.x - this.questNPC.x) < 60) {
+          // Step 0: Activate generator on B1 (Floor 0) - requires 20 CPU wins
+          if (this.currentFloor === 0 && this.bossQuestStep === 0 && !this.questGenerator.activated) {
+            if (Math.abs(this.localPlayer.x - this.questGenerator.x) < 60) {
               if (this.cpuDefeated >= 20) {
-                this.questNPC.talked = true;
-                this.questNPC.dialogText = '你已經打贏了 ' + this.cpuDefeated + ' 場人機！\n去 B1 啟動發電機吧！';
-                this.questNPC.dialogTimer = 3;
+                this.questGenerator.activated = true;
                 this.bossQuestStep = 1;
-                this.showQuestMessage('📋 任務開始！去 B1 找到發電機並啟動它！');
+                this.questGatekeeper.awake = true;
+                this.showQuestMessage('⚡ 發電機啟動！回 2F 跟守門人說話！');
               } else {
-                this.showQuestMessage('🔒 需要打贏人機 20 場才能開始任務！(目前 ' + this.cpuDefeated + '/20)');
+                this.showQuestMessage('🔒 需要打贏人機 20 場才能啟動！(目前 ' + this.cpuDefeated + '/20)');
               }
             }
           }
-          // Step 1: Activate generator on B1 (Floor 0)
-          if (this.currentFloor === 0 && this.bossQuestStep === 1 && !this.questGenerator.activated) {
-            if (Math.abs(this.localPlayer.x - this.questGenerator.x) < 60) {
-              this.questGenerator.activated = true;
-              this.bossQuestStep = 2;
-              this.questGatekeeper.awake = true;
-              this.showQuestMessage('⚡ 發電機啟動！回 2F 跟守門人說話！');
-            }
-          }
-          // Step 2: Talk to gatekeeper on Floor 2
-          if (this.currentFloor === 2 && this.bossQuestStep === 2 && this.questGatekeeper.awake && !this.questGatekeeper.talked) {
+          // Step 1: Talk to gatekeeper on Floor 2
+          if (this.currentFloor === 2 && this.bossQuestStep === 1 && this.questGatekeeper.awake && !this.questGatekeeper.talked) {
             if (Math.abs(this.localPlayer.x - this.questGatekeeper.x) < 60) {
               this.questGatekeeper.talked = true;
               this.questGatekeeper.dialogText = '你修好了發電機？\n看來你有資格挑戰暗影恐龍了...';
               this.questGatekeeper.dialogTimer = 3;
-              this.bossQuestStep = 3;
+              this.bossQuestStep = 2;
               this.bossQuestDone = true;
               this.showQuestMessage('🐉 BOSS 傳送門已解鎖！');
               if (this.onBossQuestComplete) this.onBossQuestComplete();
@@ -326,7 +315,6 @@ export class LobbyEngine {
     // Timers
     if (this.questMessageTimer > 0) this.questMessageTimer -= deltaTime;
     if (this.practiceDummy.shakeTimer > 0) this.practiceDummy.shakeTimer -= deltaTime;
-    if (this.questNPC.dialogTimer > 0) this.questNPC.dialogTimer -= deltaTime;
     if (this.questGatekeeper.dialogTimer > 0) this.questGatekeeper.dialogTimer -= deltaTime;
     if (this.questAttackCooldown > 0) this.questAttackCooldown -= deltaTime;
 
@@ -344,10 +332,12 @@ export class LobbyEngine {
       const dist = Math.abs(px - this.practiceDummy.x);
       if (dist < 80) {
         const atkKey = this.localPlayer.controls?.attack;
-        if (atkKey && this.localPlayer.keys[atkKey] && this.questAttackCooldown <= 0) {
+        const skillKey = this.localPlayer.controls?.skill;
+        const isAttacking = (atkKey && this.localPlayer.keys[atkKey]) || (skillKey && this.localPlayer.keys[skillKey]);
+        if (isAttacking && this.questAttackCooldown <= 0) {
           this.practiceDummy.hp--;
-          this.practiceDummy.shakeTimer = 0.15;
-          this.questAttackCooldown = 0.3;
+          this.practiceDummy.shakeTimer = 0.1;
+          this.questAttackCooldown = 0.08; // Very fast so rapid pressing works
           if (this.practiceDummy.hp <= 0) {
             this.practiceDummy.respawnTimer = 3; // Respawn after 3 seconds
             this.showQuestMessage('💥 假人被打爆了！3 秒後重新生成...');
@@ -492,26 +482,18 @@ export class LobbyEngine {
       // Quest interaction prompts (multi-floor)
       if (!nearObj && !this.bossQuestDone) {
         const px = this.localPlayer.x;
-        // Practice dummy on Floor 1
-        if (this.currentFloor === 1 && this.practiceDummy.hp > 0 && Math.abs(px - this.practiceDummy.x) < 80) {
-          nearObj = '⚔️ 攻擊訓練假人！ (按攻擊鍵)';
-        }
-        // NPC on Floor 1
-        if (this.currentFloor === 1 && this.bossQuestStep === 0 && Math.abs(px - this.questNPC.x) < 60) {
-          nearObj = this.cpuDefeated >= 20 ? '💬 跟任務 NPC 說話' : '🔒 需打贏人機20場 (' + this.cpuDefeated + '/20)';
-        }
         // Generator on B1
-        if (this.currentFloor === 0 && this.bossQuestStep === 1 && Math.abs(px - this.questGenerator.x) < 60) {
-          nearObj = '⚡ 啟動發電機';
+        if (this.currentFloor === 0 && this.bossQuestStep === 0 && Math.abs(px - this.questGenerator.x) < 60) {
+          nearObj = this.cpuDefeated >= 20 ? '⚡ 啟動發電機' : '🔒 需打贏人機20場 (' + this.cpuDefeated + '/20)';
         }
         // Gatekeeper on Floor 2
-        if (this.currentFloor === 2 && this.bossQuestStep === 2 && this.questGatekeeper.awake && Math.abs(px - this.questGatekeeper.x) < 60) {
+        if (this.currentFloor === 2 && this.bossQuestStep === 1 && this.questGatekeeper.awake && Math.abs(px - this.questGatekeeper.x) < 60) {
           nearObj = '💬 跟守門人說話';
         }
       }
-      // Practice dummy prompt even when quest is done
+      // Practice dummy prompt (always available)
       if (!nearObj && this.currentFloor === 1 && this.practiceDummy.hp > 0 && Math.abs(this.localPlayer.x - this.practiceDummy.x) < 80) {
-        nearObj = '⚔️ 攻擊訓練假人！ (按攻擊鍵)';
+        nearObj = '⚔️ 攻擊訓練假人！ (按攻擊鍵/技能鍵)';
       }
       
       if (!nearObj && this.currentFloor === 2) {
@@ -607,83 +589,8 @@ export class LobbyEngine {
       this.ctx.restore();
     }
 
-    // === 2. QUEST NPC on Floor 1 (always visible) ===
-    {
-      this.ctx.save();
-      const nx = this.questNPC.x;
-      const ny = this.floors[1];
 
-      // Shadow
-      this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      this.ctx.beginPath();
-      this.ctx.ellipse(nx, ny, 18, 6, 0, 0, Math.PI * 2);
-      this.ctx.fill();
-
-      // Body - friendly villager look
-      this.ctx.fillStyle = '#2c3e50';
-      this.ctx.beginPath();
-      this.ctx.moveTo(nx - 16, ny);
-      this.ctx.lineTo(nx - 10, ny - 65);
-      this.ctx.lineTo(nx + 10, ny - 65);
-      this.ctx.lineTo(nx + 16, ny);
-      this.ctx.closePath();
-      this.ctx.fill();
-
-      // Head
-      this.ctx.fillStyle = '#f5cba7';
-      this.ctx.beginPath();
-      this.ctx.arc(nx, ny - 75, 14, 0, Math.PI * 2);
-      this.ctx.fill();
-
-      // Eyes
-      this.ctx.fillStyle = '#333';
-      this.ctx.beginPath();
-      this.ctx.arc(nx - 4, ny - 77, 2, 0, Math.PI * 2);
-      this.ctx.arc(nx + 4, ny - 77, 2, 0, Math.PI * 2);
-      this.ctx.fill();
-
-      // Hat
-      this.ctx.fillStyle = '#e74c3c';
-      this.ctx.fillRect(nx - 12, ny - 92, 24, 8);
-      this.ctx.fillRect(nx - 8, ny - 105, 16, 15);
-
-      // Quest marker (!) above head
-      if (!this.bossQuestDone && this.bossQuestStep === 0) {
-        this.ctx.fillStyle = '#ffd32a';
-        this.ctx.shadowBlur = 10;
-        this.ctx.shadowColor = '#ffd32a';
-        this.ctx.font = 'bold 24px Inter';
-        this.ctx.textAlign = 'center';
-        const bounce = Math.sin(time * 3) * 5;
-        this.ctx.fillText('❗', nx, ny - 115 + bounce);
-        this.ctx.shadowBlur = 0;
-      }
-
-      // Label
-      this.ctx.fillStyle = '#ffd32a';
-      this.ctx.font = 'bold 13px Inter';
-      this.ctx.textAlign = 'center';
-      this.ctx.fillText('任務 NPC', nx, ny - 130);
-
-      // Dialog bubble
-      if (this.questNPC.dialogTimer > 0 && this.questNPC.dialogText) {
-        this.ctx.fillStyle = 'rgba(0,0,0,0.8)';
-        this.ctx.fillRect(nx - 120, ny - 180, 240, 45);
-        this.ctx.strokeStyle = '#ffd32a';
-        this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(nx - 120, ny - 180, 240, 45);
-        this.ctx.fillStyle = '#fff';
-        this.ctx.font = '12px Inter';
-        const lines = this.questNPC.dialogText.split('\n');
-        lines.forEach((line, i) => {
-          this.ctx.fillText(line, nx, ny - 165 + i * 16);
-        });
-      }
-
-      this.ctx.restore();
-    }
-
-    // === 3. GENERATOR on B1 (Floor 0) ===
+    // === 2. GENERATOR on B1 (Floor 0) ===
     if (!this.bossQuestDone || this.questGenerator.activated) {
       this.ctx.save();
       const gx = this.questGenerator.x;
