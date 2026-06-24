@@ -2763,12 +2763,11 @@ const startBossRaid = (useNPC) => {
     };
     
     engine.onVictory = (gold) => {
-      // The user specifically requested ONE HUNDRED BILLION gear coins for beating the boss!
-      const massiveReward = 100000000000;
+      const reward = 500;
       setTimeout(() => {
-        goldCoins.value += massiveReward;
+        goldCoins.value += reward;
         saveProgress();
-        alert(`🎉 恭喜擊敗暗影恐龍！獲得裝備金幣: ${massiveReward.toLocaleString()}`);
+        alert(`🎉 恭喜擊敗暗影恐龍！獲得裝備金幣: ${reward}`);
         gameState.value = 'LOBBY';
         initLobby(); // Return to lobby
       }, 5000);
@@ -2776,10 +2775,10 @@ const startBossRaid = (useNPC) => {
     
     engine.onDefeat = () => {
       setTimeout(() => {
-        const consolationPrize = 5000;
+        const consolationPrize = 50;
         goldCoins.value += consolationPrize;
         saveProgress();
-        alert(`💀 挑戰失敗！雙方皆陣亡。獲得安慰獎: ${consolationPrize.toLocaleString()} 裝備金幣`);
+        alert(`💀 挑戰失敗！雙方皆陣亡。獲得安慰獎: ${consolationPrize} 裝備金幣`);
         gameState.value = 'LOBBY';
         initLobby();
       }, 5000);
