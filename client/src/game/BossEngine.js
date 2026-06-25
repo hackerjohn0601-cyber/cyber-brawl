@@ -348,53 +348,86 @@ export class BossEngine {
   }
 
   updateNPCAI(npc, dt) {
-    // Simple boss-fighting AI
+    // Aggressive boss-fighting AI
     const boss = this.boss;
-    const dist = Math.abs(npc.x + npc.width/2 - (boss.x + boss.width/2));
+    const bossCenter = boss.x + boss.width / 2;
+    const npcCenter = npc.x + npc.width / 2;
+    const dist = Math.abs(npcCenter - bossCenter);
     
     // Face boss
-    npc.facing = boss.x > npc.x ? 1 : -1;
+    npc.facing = bossCenter > npcCenter ? 1 : -1;
     
-    // Move toward boss
-    if (dist > 150) {
-      npc.keys[npc.controls.right] = boss.x > npc.x;
-      npc.keys[npc.controls.left] = boss.x < npc.x;
-    } else {
-      npc.keys[npc.controls.right] = false;
-      npc.keys[npc.controls.left] = false;
-    }
+    // Reset movement keys
+    npc.keys[npc.controls.right] = false;
+    npc.keys[npc.controls.left] = false;
     
-    // Attack when close
-    if (dist < 200) {
-      // Random attacks
-      if (Math.random() < 0.03) {
-        npc.keys[npc.controls.attack] = true;
-        setTimeout(() => { npc.keys[npc.controls.attack] = false; }, 100);
-      }
-      if (Math.random() < 0.01 && npc.skillReady) {
-        npc.keys[npc.controls.skill] = true;
-        setTimeout(() => { npc.keys[npc.controls.skill] = false; }, 100);
-      }
-    }
-    
-    // Jump to dodge bullets
-    const nearbyBullet = boss.bullets.find(b => {
-      const dx = b.x - npc.x;
-      const dy = b.y - npc.y;
-      return Math.sqrt(dx*dx + dy*dy) < 100;
-    });
-    if (nearbyBullet && npc.isGrounded && Math.random() < 0.1) {
-      npc.keys[npc.controls.up] = true;
-      setTimeout(() => { npc.keys[npc.controls.up] = false; }, 100);
-    }
-    
+    // --- DODGE LOGIC (highest priority) ---
     // Dodge meteors
     const nearbyMeteor = boss.meteors.find(m => {
-      return Math.abs(m.x - npc.x) < 60 && m.warningTimer <= 0.3;
+      return Math.abs(m.x - npcCenter) < 80 && m.warningTimer <= 0.5;
     });
     if (nearbyMeteor) {
-      npc.keys[npc.controls.right] = nearbyMeteor.x > npc.x ? false : true;
-      npc.keys[npc.controls.left] = nearbyMeteor.x > npc.x ? true : false;
+      // Run away from meteor
+      npc.keys[npc.controls.right] = nearbyMeteor.x > npcCenter;
+      npc.keys[npc.controls.left] = nearbyMeteor.x <= npcCenter;
+      if (npc.isGrounded && Math.random() < 0.3) {
+        npc.keys[npc.controls.up] = true;
+        setTimeout(() => { npc.keys[npc.controls.up] = false; }, 150);
+      }
+      return; // Focus on dodging
+    }
+    
+    // Dodge bullets
+    const nearbyBullet = boss.bullets.find(b => {
+      const dx = b.x - npcCenter;
+      const dy = b.y - (npc.y + npc.height / 2);
+      return Math.sqrt(dx * dx + dy * dy) < 120;
+    });
+    if (nearbyBullet && npc.isGrounded && Math.random() < 0.25) {
+      npc.keys[npc.controls.up] = true;
+      setTimeout(() => { npc.keys[npc.controls.up] = false; }, 150);
+    }
+    
+    // Dodge laser beams - check if boss is using laser
+    if (boss.laserActive || boss.isCharging) {
+      // Try to jump over or move away
+      if (npc.isGrounded && Math.random() < 0.15) {
+        npc.keys[npc.controls.up] = true;
+        setTimeout(() => { npc.keys[npc.controls.up] = false; }, 200);
+      }
+    }
+    
+    // --- MOVEMENT (go to optimal attack range) ---
+    const idealDist = 80; // Close combat range
+    if (dist > idealDist + 40) {
+      // Move toward boss
+      npc.keys[npc.controls.right] = bossCenter > npcCenter;
+      npc.keys[npc.controls.left] = bossCenter < npcCenter;
+    } else if (dist < 40) {
+      // Too close, back up slightly
+      npc.keys[npc.controls.right] = bossCenter < npcCenter;
+      npc.keys[npc.controls.left] = bossCenter > npcCenter;
+    }
+    
+    // --- ATTACK (very aggressive) ---
+    if (dist < 200) {
+      // Regular attack - high frequency, rapid pressing style
+      if (Math.random() < 0.15 && !npc.isAttacking && !npc.isChargingAttack) {
+        npc.keys[npc.controls.attack] = true;
+        setTimeout(() => { npc.keys[npc.controls.attack] = false; }, 80);
+      }
+      
+      // Skill attack - use whenever ready
+      if (Math.random() < 0.05 && npc.skillReady && !npc.isUsingSkill) {
+        npc.keys[npc.controls.skill] = true;
+        setTimeout(() => { npc.keys[npc.controls.skill] = false; }, 120);
+      }
+    }
+    
+    // --- DEFENSE (block when boss is attacking close) ---
+    if (dist < 150 && boss.isAttacking && Math.random() < 0.1) {
+      npc.keys[npc.controls.defend] = true;
+      setTimeout(() => { npc.keys[npc.controls.defend] = false; }, 300);
     }
   }
 
