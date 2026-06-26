@@ -53,6 +53,7 @@ export class GameEngine {
   }
 
   addEntity(entity) {
+    entity.engine = this;
     this.entities.push(entity);
   }
 
