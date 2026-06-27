@@ -742,7 +742,7 @@
       <!-- UI Overlay for Health Bars -->
       <div class="ui-layer" v-show="!isCinematicActive && gameState === 'FIGHT'">
         <div class="health-wrapper p1-health">
-          <div class="char-name" style="color: #ff4757">{{ p1Choice }}</div>
+          <div class="char-name" style="color: #ff4757">{{ isOnline && !networkManager.isHost ? p2Choice : p1Choice }}</div>
           <div class="health-bar-bg">
             <div class="health-bar-fill" :style="{ width: ((p1Health / p1MaxHealth) * 100) + '%' }"></div>
           </div>
@@ -771,7 +771,7 @@
 
         <div class="health-wrapper p2-health">
           <div class="char-name" style="text-align: right; color: #1e90ff">
-            {{ isVsCPU ? 'CPU: ' : '' }}{{ p2Choice }}
+            {{ isVsCPU ? 'CPU: ' : '' }}{{ isOnline && !networkManager.isHost ? p1Choice : p2Choice }}
           </div>
           <div class="health-bar-bg">
             <div class="health-bar-fill" :style="{ width: ((p2Health / p2MaxHealth) * 100) + '%' }"></div>
@@ -808,9 +808,9 @@
         
         <div style="flex: 1; text-align: center; border-right: 4px solid #e056fd; padding: 20px;">
           <h2 style="font-size: 2.5rem; color: #ff4757; text-shadow: 0 0 10px #ff4757;">{{ isOnline && !networkManager.isHost ? opponentUsername : loggedInUsername }}</h2>
-          <h3 style="font-size: 1.8rem; margin: 10px 0; color: #f1c40f;">{{ p1Choice }}</h3>
+          <h3 style="font-size: 1.8rem; margin: 10px 0; color: #f1c40f;">{{ isOnline && !networkManager.isHost ? p2Choice : p1Choice }}</h3>
           <p style="font-size: 1.2rem; margin: 5px 0;">🏆 獎杯: <span style="color: #00d2d3;">{{ trophies }}</span></p>
-          <p style="font-size: 1.2rem; margin: 5px 0;">⏱️ 使用時間: <span style="color: #2ed573;">{{ charPlayTime[p1Choice] || 0 }} 分鐘</span></p>
+          <p style="font-size: 1.2rem; margin: 5px 0;">⏱️ 使用時間: <span style="color: #2ed573;">{{ charPlayTime[isOnline && !networkManager.isHost ? p2Choice : p1Choice] || 0 }} 分鐘</span></p>
         </div>
         
         <div style="font-size: 4rem; font-weight: 900; font-style: italic; color: white; text-shadow: 0 0 20px #e056fd, 0 0 40px #e056fd; margin: 0 20px; animation: pulse 1s infinite alternate;">
@@ -819,7 +819,7 @@
         
         <div style="flex: 1; text-align: center; border-left: 4px solid #e056fd; padding: 20px;">
           <h2 style="font-size: 2.5rem; color: #3498db; text-shadow: 0 0 10px #3498db;">{{ isOnline ? (networkManager.isHost ? opponentUsername : loggedInUsername) : (isVsCPU ? 'CPU' : 'Player 2') }}</h2>
-          <h3 style="font-size: 1.8rem; margin: 10px 0; color: #f1c40f;">{{ p2Choice }}</h3>
+          <h3 style="font-size: 1.8rem; margin: 10px 0; color: #f1c40f;">{{ isOnline && !networkManager.isHost ? p1Choice : p2Choice }}</h3>
           <p style="font-size: 1.2rem; margin: 5px 0;">🏆 獎杯: <span style="color: #00d2d3;">{{ isOnline ? '???' : (isVsCPU ? '---' : '---') }}</span></p>
           <p style="font-size: 1.2rem; margin: 5px 0;">⏱️ 使用時間: <span style="color: #2ed573;">{{ isOnline ? '???' : (isVsCPU ? '---' : '---') }}</span></p>
         </div>
@@ -2324,11 +2324,18 @@ const setupNetworking = () => {
 
 const selectChar = (playerNum, charName) => {
   if (isSpectator.value) return;
-  if (playerNum === 1 && (onlineState.isHost || !isOnline.value)) {
-    if (localReady.value) return; // Cannot change if ready
-    p1Choice.value = charName;
-    networkManager.sendLobbyAction({ type: 'selectChar', char: charName });
+  if (localReady.value) return; // Cannot change if ready
+  
+  if (isOnline.value) {
+    // Online mode: both host and non-host select from the left panel ("YOUR FIGHTER")
+    // Their selection is always shown as p1Choice locally
+    if (playerNum === 1) {
+      p1Choice.value = charName;
+      networkManager.sendLobbyAction({ type: 'selectChar', char: charName });
+    }
+    // Right panel is opponent's - can't click it in online mode
   } else {
+    // Local mode: player 1 left panel, player 2 right panel
     if (playerNum === 1) p1Choice.value = charName;
     if (playerNum === 2) p2Choice.value = charName;
   }
@@ -2483,20 +2490,33 @@ const initGame = () => {
   engine.isOnline = isOnline.value;
   engine.isHost = isOnline.value ? networkManager.isHost : true;
 
-  // Player 1 (Red, always human if local/host, remote if guest)
+  // Resolve which character goes to which slot
+  // In online mode: p1Choice = MY character, p2Choice = OPPONENT's character (on both sides)
+  // But engine P1 is always the HOST's character, P2 is always the GUEST's character
+  let p1Char, p2Char;
+  if (isOnline.value && !networkManager.isHost && !isSpectator.value) {
+    // Non-host: swap - my pick goes to P2 (guest slot), opponent's pick goes to P1 (host slot)
+    p1Char = p2Choice.value; // Host's character (received from opponent)
+    p2Char = p1Choice.value; // My character (what I selected)
+  } else {
+    p1Char = p1Choice.value;
+    p2Char = p2Choice.value;
+  }
+
+  // Player 1 (Red, always the host's character)
   const p1Controls = keyBindings.value;
-  p1 = new Player(100, 100, getEquippedSkinColor(p1Choice.value), p1Controls, 1, p1Choice.value, false, charLevels.value[p1Choice.value] || 1, playerEquipment.value, equippedSkins.value[p1Choice.value] || 'default', trophies.value);
+  p1 = new Player(100, 100, getEquippedSkinColor(p1Char), p1Controls, 1, p1Char, false, charLevels.value[p1Char] || 1, playerEquipment.value, equippedSkins.value[p1Char] || 'default', trophies.value);
   p1.engine = engine;
   p1.isOnline = isOnline.value;
   p1.isLocalPlayer = isSpectator.value ? false : (isOnline.value ? networkManager.isHost : true);
   p1.team = 1;
 
-  // Player 2 (Blue)
+  // Player 2 (Blue, always the guest's character)
   const p2Controls = isOnline.value 
     ? { left: 'a', right: 'd', up: 'w', down: 's', defend: 'shift', attack: ' ', skill: 'f', ultimate: 'e', burst: 'g' }
     : { left: 'arrowleft', right: 'arrowright', up: 'arrowup', down: 'arrowdown', defend: 'arrowdown', attack: 'enter', skill: '/', ultimate: 'p', burst: '[' };
     
-  p2 = new Player(800, 100, getEquippedSkinColor(p2Choice.value), p2Controls, -1, p2Choice.value, isVsCPU.value, isOnline.value ? 1 : (charLevels.value[p2Choice.value] || 1), undefined, isOnline.value ? 'default' : (equippedSkins.value[p2Choice.value] || 'default'), isOnline.value ? 0 : 0); // P2 CPU doesn't use burst yet
+  p2 = new Player(800, 100, getEquippedSkinColor(p2Char), p2Controls, -1, p2Char, isVsCPU.value, isOnline.value ? 1 : (charLevels.value[p2Char] || 1), undefined, isOnline.value ? 'default' : (equippedSkins.value[p2Char] || 'default'), isOnline.value ? 0 : 0);
   p2.engine = engine;
   p2.isOnline = isOnline.value;
   p2.isLocalPlayer = isSpectator.value ? false : (isOnline.value ? !networkManager.isHost : !isVsCPU.value);
