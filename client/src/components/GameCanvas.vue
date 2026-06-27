@@ -1633,6 +1633,23 @@ const onResize = () => {
 };
 
 const wrapperStyle = computed(() => {
+  // For menu/UI screens, use the full viewport instead of the game canvas ratio
+  const isCanvasScreen = ['FIGHT', 'BOSS_FIGHT', 'LOBBY'].includes(gameState.value);
+  
+  if (!isCanvasScreen) {
+    return {
+      position: 'relative',
+      width: '100vw',
+      height: '100vh',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      transform: 'none',
+      transformOrigin: 'center center',
+      overflow: 'auto'
+    };
+  }
+  
   const targetRatio = 1024 / 576;
   const currentRatio = windowSize.width / windowSize.height;
   
