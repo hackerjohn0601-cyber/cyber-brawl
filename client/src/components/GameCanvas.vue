@@ -3440,7 +3440,7 @@ kbd {
   overflow-y: auto;
   overflow-x: hidden;
   max-height: 100vh;
-  padding: 2rem 0;
+  padding: 2rem 0 4rem 0;
 }
 
 .select-title {
@@ -3531,6 +3531,11 @@ kbd {
 .bottom-actions {
   display: flex;
   gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 1rem 0 2rem 0;
+  width: 100%;
 }
 
 .back-btn, .start-btn {
